@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+*.key
+*credentials*.json
+private/
+vendor/
+.DS_Store
