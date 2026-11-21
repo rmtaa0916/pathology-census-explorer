@@ -141,6 +141,7 @@ function launchGoogle(){
  loginMessage('Choose an approved laboratory Google account.');
 }
 function onGoogleCredential(result){
+ if(SIGNIN_BUSY)return;
  if(!result?.credential)return loginMessage('Google sign-in did not return an identity token.',true);
  LOGIN_TOKEN=result.credential;SIGNIN_BUSY=true;
  loginMessage('Verifying your Google account…');
@@ -162,6 +163,7 @@ function signOut(){
 }
 function rpc(op,payload){
  if(!LOGIN_TOKEN)return Promise.reject(Error('Sign in first.'));
+ if(WAITING.size)return Promise.reject(Error('Another request is in progress.'));
  if(!safeEndpoint(CFG.endpoint))return Promise.reject(Error('Invalid Apps Script endpoint configuration.'));
  const requestId=newNonce();
  return new Promise((resolve,reject)=>{
@@ -247,7 +249,7 @@ function submit(e){
    }
    if(!result.duplicate && result.kitId && result.balance!==null)DATA.balances[result.kitId]=result.balance;
    showStatus((result.duplicate?'Already recorded — no duplicate deduction. ':'Saved. ')+
-     'Transaction '+result.transactionId+(result.balance===null?'':'; new stock '+result.balance),'good');
+     'Transaction '+result.transactionId+(typeof result.balance==='number'?'; new stock '+result.balance:''),'good');
    refreshData(false);
  }).catch(err=>{
    LOCKED=false;el('save').disabled=false;el('save').textContent='Retry SAME transaction';
