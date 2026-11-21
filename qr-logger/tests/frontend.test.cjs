@@ -13,7 +13,7 @@ for(const id of ['form','ref','action','qty','kit','notes','status','print-label
 }
 assert.match(script,/crypto\.getRandomValues/,'Unique transaction IDs use secure randomness');
 assert.match(script,/Retry SAME transaction/,'Same pending transaction ID can be retried');
-assert.match(script,/Use again/,'UI provides intentional repeat');
+assert.match(html,/Use again/,'UI provides intentional repeat');
 assert.match(script,/new QRCode/,'Print labels render QR links client-side');
 assert.match(script,/searchParams\.set\('ref',ref\)/,'Links include scanned reference');
 assert.match(html,/QR Logger/);
