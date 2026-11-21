@@ -216,7 +216,7 @@ function refreshData(initial){
 document.addEventListener('DOMContentLoaded',()=>{
  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
  el('ref').addEventListener('change',()=>{if(!PENDING)onRefChange()});
- el('kit').addEventListener('change',()=>{if(!PENDING)renderStock()});
+ el('kit').addEventListener('change',()=>{if(!PENDING){const lot=chosenLot();if(lot){el('action').value=(DATA.openedKits||[]).includes(lot.kit_id)?'CONSUMED':'KIT_OPENED';onActionChange()}renderStock()}});
  el('action').addEventListener('change',()=>{if(!PENDING)onActionChange()});
  el('form').addEventListener('submit',submit);
  el('new').addEventListener('click',()=>{resetAfterSuccess();onRefChange()});
