@@ -36,6 +36,7 @@ final class CensusData
         $entries = [];
         $periods = array_flip(self::PERIODS);
         $categories = [];
+        $records = [];
         foreach ($rows as $idx => $row) {
             if ($idx === 0 && ($row[0] ?? '') === 'Period') continue;
             $period = (string)($row[0] ?? '');
@@ -46,10 +47,15 @@ final class CensusData
             $status = trim((string)($row[10] ?? ''));
             if (!isset($periods[$period]) || $test === '' || !in_array($group, ['inpatient','outpatient','employee'], true)) continue;
             if (!in_array($payer,['CHA','PAY','QFS'],true) || !in_array($priority,['STAT','ROUTINE','QFS'],true)) continue;
-            if ($isDemo && $status !== 'SYNTHETIC / DEMO') continue;
             $volume = (int)($row[7] ?? 0);
             $amount = (float)($row[9] ?? 0);
             if ($volume < 0 || !is_finite($amount) || $amount < 0) continue;
+            $records[] = [
+                'sheetRow'=>$idx + 4, 'period'=>$period, 'test'=>$test,
+                'patientGroup'=>ucfirst($group),'billing'=>$payer,'priority'=>$priority,
+                'count'=>$volume,'rate'=>(float)($row[8] ?? 0),
+                'amount'=>$amount,
+            ];
             $section = $group === 'employee' ? 'operational' : $group;
             $channel = $payer . ' ' . ($priority === 'QFS' ? 'QFS' : ucfirst(strtolower($priority)));
             $key = implode('|',[$test,$section,$channel]);
@@ -83,15 +89,16 @@ final class CensusData
         }
         $sumExam = fn($key)=>array_reduce($exams,fn($acc,$e)=>$acc+$e[$key],0);
         return [
-            'title'=>'Immunology Census — SYNTHETIC DEMO, December 2023',
+            'title'=>'Immunology Census — December 2023',
             'source'=>[
                 'file'=>'DEMO - Weekly Census','source_period'=>'2023-12','received_date'=>null,
                 'google_sheets_url'=>$spreadsheetId?('https://docs.google.com/spreadsheets/d/'.$spreadsheetId.'/edit'):'#',
-                'source_sheets'=>['DEMO - Weekly Census'], 'blank_sheets'=>[], 'is_demo'=>$isDemo,
+                'source_sheets'=>['DEMO - Weekly Census'], 'blank_sheets'=>[], 'is_demo'=>$isDemo, 'is_copy'=>true,
             ],
-            'exams'=>$exams,'entries'=>array_values($entries),'blood_processing'=>[],
-            'cautions'=>[['severity'=>'low','title'=>'Synthetic records only',
-                'description'=>'These values are for workflow testing and are not actual laboratory results.']],
+            'exams'=>$exams,'entries'=>array_values($entries),'records'=>$records,'blood_processing'=>[],
+            'cautions'=>$isDemo
+                ? [['severity'=>'low','title'=>'Local preview fixture','description'=>'This local preview uses generated sample values, not the connected Sheet.']]
+                : [['severity'=>'low','title'=>'Connected working copy','description'=>'Values come from the separate configured Google Sheets copy.']],
             'summary_stats'=>[
                 'total_volume'=>$sumExam('volume'), 'reported_income'=>$sumExam('reported_income'),
                 'patient_volume'=>$sumExam('patient_volume'),'qfs_volume'=>$sumExam('qfs_volume'),
