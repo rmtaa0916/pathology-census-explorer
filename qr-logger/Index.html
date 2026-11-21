@@ -131,7 +131,7 @@ function onRefChange(){
   :[['KIT_OPENED','Open kit'],['CONSUMED','Consume material'],['WASTED','Record wastage'],['RECEIVED','Receive into kit']];
  el('action').innerHTML=opts.map(([id,name])=>'<option value="'+id+'">'+name+'</option>').join('');
  const lot=chosenLot();
- if(kind==='STOCK')el('action').value=lot?.status==='UNOPENED'?'KIT_OPENED':'CONSUMED';
+ if(kind==='STOCK')el('action').value=lot && !(DATA.openedKits||[]).includes(lot.kit_id)?'KIT_OPENED':'CONSUMED';
  onActionChange();renderStock();
 }
 function onActionChange(){el('qty').value=el('action').value==='KIT_OPENED'?'0':'1';el('qty').disabled=el('action').value==='KIT_OPENED'}
@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  el('kit').addEventListener('change',()=>{if(!PENDING)renderStock()});
  el('action').addEventListener('change',()=>{if(!PENDING)onActionChange()});
  el('form').addEventListener('submit',submit);
- el('new').addEventListener('click',()=>{resetAfterSuccess();renderStock()});
+ el('new').addEventListener('click',()=>{resetAfterSuccess();onRefChange()});
  el('print-labels').addEventListener('click',()=>{document.body.classList.remove('print-kits');document.body.classList.add('print-labels');window.print()});
  el('print-kits').addEventListener('click',()=>{document.body.classList.remove('print-labels');document.body.classList.add('print-kits');window.print()});
  setTab('log');refreshData(true);
