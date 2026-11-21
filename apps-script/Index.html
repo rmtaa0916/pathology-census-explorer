@@ -347,7 +347,7 @@ const fmtInt=n=>Number(n).toLocaleString('en-PH'),fmtMoney=n=>'₱'+Number(n).to
 const escapeHtml=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let activePage='overview',chartMetric='volume',tableQuery='',tableSort='volume',tableSortDir='desc';
 let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null, drawerStarting=null, staleDashboard=false, lastCommittedEdit=null, undoInProgress=false;
-let reportPeriod='all',reportDetail=false,reportGenerating=false;
+let reportPeriod='all',reportDetail=false,reportAmounts=false,reportGenerating=false;
 let reportSecondRole='Noted by';
 let reportError='';
 let reportReturnFocus=null;
@@ -1332,7 +1332,7 @@ function reports(){
   return `${pageIntro('Reporting / print-ready documentation','A4 formal census reports',
     'Generate an institutional-style report from one period or the complete December 2023 census.')}
     <section class="card report-setup">
-      <div class="record-note"><b>Source:</b> The connected Google Sheets working copy. Report generation performs a fresh read before creating the preview. Enter signatory details below; they will appear on the printed report.</div>
+      <div class="record-note">Select a reporting period and complete the signatory details. The report uses the latest saved census figures.</div>
       ${reportError?`<div class="report-uncommitted" role="alert">${escapeHtml(reportError)}</div>`:''}
       ${pending?`<div class="report-uncommitted" role="alert">
         Unsaved or unconfirmed edits are present. Save all and reconcile before generating a new report.
@@ -1341,6 +1341,8 @@ function reports(){
         <select class="select" id="reportPeriod">${options.map(o=>`<option value="${o.id}" ${reportPeriod===o.id?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select></label>
         <label class="report-checkbox"><input type="checkbox" id="reportDetail" ${reportDetail?'checked':''}>
           Include full category-detail appendix (additional A4 pages)</label>
+        <label class="report-checkbox"><input type="checkbox" id="reportAmounts" ${reportAmounts?'checked':''}>
+          Include calculated amounts based on listed rates</label>
         <div class="report-signatory-editor">
           <h3>Report signatories</h3>
           <p>Enter names, positions and dates to appear on the report. These entries do not change Google Sheets.</p>
@@ -1357,9 +1359,9 @@ function reports(){
             ${reportSignatoriesReady()?'Entered details will appear on the report. The signature lines are for signing after printing.':'Enter the name, position and date for both signatories before generating the report.'}
           </p>
         </div>
-        <div class="report-counts"><div><span>Source rows</span><strong>${fmtInt(model.rows)}</strong></div>
+        <div class="report-counts"><div><span>Intervals</span><strong>${model.full?'4':'1'}</strong></div>
           <div><span>Examinations</span><strong>${fmtInt(model.total.count)}</strong></div>
-          <div><span>Calculated amount</span><strong>${formalMoney(model.total.amount)}</strong></div></div>
+          <div><span>Test categories</span><strong>${fmtInt(model.examinations.length)}</strong></div></div>
         <button type="button" class="report-generate" data-report-generate ${pending||SOURCE?.needsReview||!reportSignatoriesReady()?'disabled':''}>
           ${reportGenerating?'Loading source…':'Generate A4 report'}</button>
       </div>
@@ -1372,7 +1374,7 @@ async function generateA4Report(){
   reportGenerating=true;
   reportError='';
   reportReturnFocus=document.activeElement;
-  const selected=reportPeriod,detail=reportDetail;
+  const selected=reportPeriod,detail=reportDetail,amounts=reportAmounts;
   const signatories={prepared:{...reportSignatories.prepared},noted:{...reportSignatories.noted}};
   const secondRole=reportSecondRole;
   try{
@@ -1383,7 +1385,7 @@ async function generateA4Report(){
     const model=reportAggregate(RECORDS,selected);
     await prepareReportLetterheadPrint();
     const preview=document.getElementById('reportPreview');
-    preview.innerHTML=reportDocument(model,detail,signatories,secondRole);
+    preview.innerHTML=reportDocument(model,detail,signatories,secondRole,amounts);
     preview.hidden=false;
     paginateA4ScreenPreview(preview);
     preview.scrollTop=0;
@@ -1447,7 +1449,7 @@ document.getElementById('content').addEventListener('change',e=>{
     }
     return;
   }
-  if(e.target.id==='reportPeriod'){reportPeriod=e.target.value;render();return;}if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render();}else if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();}else if(e.target.id==='sortExams'){tableSort=e.target.value;render()}});
+  if(e.target.id==='reportPeriod'){reportPeriod=e.target.value;render();return;}if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}if(e.target.id==='reportAmounts'){reportAmounts=e.target.checked;render();return;}if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render();}else if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();}else if(e.target.id==='sortExams'){tableSort=e.target.value;render()}});
 document.querySelector('[data-open-records]').addEventListener('click',()=>showPage('records'));
 document.querySelector('[data-open-reports]').addEventListener('click',()=>showPage('reports'));
 render();
