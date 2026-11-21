@@ -40,10 +40,10 @@ assert.ok(get('content').innerHTML.includes('id="report-prepared-name"'));
 assert.ok(get('content').innerHTML.includes('id="report-noted-date"'));
 assert.ok(get('content').innerHTML.includes('data-report-submit disabled'));
 assert.equal(vm.runInContext('reportSignersReady()',sandbox),false);
-vm.runInContext(`reportSigners={
+vm.runInContext(`Object.assign(reportSigners,{
   prepared:{name:'Dr. Maria Santos',position:'Medical Technologist',date:'2026-11-21'},
   noted:{name:'Ana & Luis Reyes',position:'Department Head',date:'2026-11-22'}
-};reportSecondRole='Reviewed by';reportAmounts=true;render();`,sandbox);
+});reportSecondRole='Reviewed by';reportAmounts=true;render();`,sandbox);
 assert.equal(vm.runInContext('reportSignersReady()',sandbox),true);
 assert.ok(!get('content').innerHTML.includes('data-report-submit disabled'));
 assert.ok(get('content').innerHTML.includes('id="reportAmounts" checked'));
