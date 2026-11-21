@@ -12,7 +12,7 @@ for(let w=0;w<4;w++)for(let j=0;j<22;j++)for(let g=0;g<9;g++){
 }
 assert.equal(rows.length,793);
 const expected=rows.slice(1).reduce((s,r)=>s+r[7],0);
-let email='rmtaa0916@gmail.com',unexpectedTab=false,lock=false,flushCount=0,formulaBroken=false;
+let email='rmtaa0916@gmail.com',unexpectedTab=false,lock=false,flushCount=0,formulaBroken=false,failNextSetRow=null;
 const sheet={
  getName:()=> 'DEMO - Weekly Census',getLastRow:()=>796,
  getRange(row,col,height,cols){return {
@@ -28,11 +28,15 @@ const sheet={
      const r=rows[row-4];r[7]=value;r[9]=value*r[8];
    },
    setValues:values=>{
-     assert.equal(col,4);assert.equal(height,1);assert.equal(cols,6);
-     assert.equal(values.length,1);assert.equal(values[0].length,6);
-     const r=rows[row-4];
-     for(let i=0;i<6;i++)r[i+3]=values[0][i];
-     r[9]=r[7]*r[8];
+     assert.equal(col,4);assert.equal(cols,6);
+     assert.equal(values.length,height);assert.ok(height>=1);
+     if(failNextSetRow===row){failNextSetRow=null;throw Error('Simulated Sheet write failure');}
+     for(let j=0;j<height;j++){
+       assert.equal(values[j].length,6);
+       const r=rows[row+j-4];
+       for(let i=0;i<6;i++)r[i+3]=values[j][i];
+       r[9]=r[7]*r[8];
+     }
    }
  }}
 };
@@ -217,3 +221,122 @@ test('copied rows may have a different or blank source status without losing edi
   rows[3][10]=originalStatus;
   assert.equal(rows[3][7],originalCount);
 });
+
+
+const snapshotRecord = row => {
+ const data=rows[row-4];
+ return {
+  test:data[3],patientGroup:data[4],billing:data[5],
+  priority:data[6],count:data[7],rate:data[8]
+ };
+};
+const makeEdit=(row,values)=>({
+ sheetRow:row,period:rows[row-4][0],
+ expected:snapshotRecord(row),values:{...snapshotRecord(row),...values}
+});
+test('batch save updates adjacent source rows in one range and flush',()=>{
+ const before7=rows[3].slice(),before8=rows[4].slice();
+ const flushBefore=flushCount;
+ const reply=context.updateRecordsBatch({changes:[
+   makeEdit(8,{count:before8[7]+3,rate:before8[8]+2}),
+   makeEdit(7,{count:before7[7]+2})
+ ]});
+ assert.equal(reply.success,true);assert.equal(reply.updatedCount,2);
+ assert.equal(reply.groupsWritten,1);
+ assert.equal(flushCount,flushBefore+1);
+ assert.equal(rows[3][7],before7[7]+2);
+ assert.equal(rows[4][7],before8[7]+3);
+ assert.equal(rows[3][9],rows[3][7]*rows[3][8]);
+ assert.equal(rows[4][9],rows[4][7]*rows[4][8]);
+ assert.equal(rows[3][10],before7[10]);
+ assert.equal(rows[4][10],before8[10]);
+ assert.equal(lock,false);
+ context.updateRecordsBatch({changes:[
+   {...makeEdit(7,{}),values:{
+     test:before7[3],patientGroup:before7[4],billing:before7[5],
+     priority:before7[6],count:before7[7],rate:before7[8]}},
+   {...makeEdit(8,{}),values:{
+     test:before8[3],patientGroup:before8[4],billing:before8[5],
+     priority:before8[6],count:before8[7],rate:before8[8]}}
+ ]});
+ assert.deepEqual(rows[3],before7);assert.deepEqual(rows[4],before8);
+});
+test('nonadjacent edits save through one endpoint with separate range writes',()=>{
+ const original7=rows[3].slice(),original12=rows[8].slice();
+ const b=context.updateRecordsBatch({changes:[
+   makeEdit(7,{count:original7[7]+1}),
+   makeEdit(12,{rate:original12[8]+0.5})
+ ]});
+ assert.equal(b.groupsWritten,2);
+ assert.equal(rows[3][7],original7[7]+1);
+ assert.equal(rows[8][8],original12[8]+0.5);
+ context.updateRecordsBatch({changes:[
+   {...makeEdit(7,{}),values:{test:original7[3],patientGroup:original7[4],
+     billing:original7[5],priority:original7[6],count:original7[7],rate:original7[8]}},
+   {...makeEdit(12,{}),values:{test:original12[3],patientGroup:original12[4],
+     billing:original12[5],priority:original12[6],count:original12[7],rate:original12[8]}}
+ ]});
+ assert.deepEqual(rows[3],original7);assert.deepEqual(rows[8],original12);
+});
+test('stale data in one row rejects the entire batch before any write',()=>{
+ const before7=rows[3].slice(),before8=rows[4].slice();
+ const first=makeEdit(7,{count:before7[7]+8}),second=makeEdit(8,{count:before8[7]+9});
+ second.expected.count=-1;
+ const oldFlush=flushCount;
+ assert.throws(()=>context.updateRecordsBatch({changes:[first,second]}),/changed/);
+ assert.deepEqual(rows[3],before7);assert.deepEqual(rows[4],before8);
+ assert.equal(flushCount,oldFlush);
+});
+test('batch rejects duplicates and unsupported input values',()=>{
+ const p=makeEdit(7,{count:3});
+ assert.throws(()=>context.updateRecordsBatch({changes:[p,p]}),/more than once/);
+ assert.throws(()=>context.updateRecordsBatch({changes:[
+   makeEdit(7,{rate:11.001})]}),/Invalid/);
+ assert.throws(()=>context.updateRecordsBatch({changes:[
+   makeEdit(7,{priority:'QFS'})]}),/Invalid/);
+ assert.throws(()=>context.updateRecordsBatch({changes:[]}),/between 1 and 100/);
+});
+test('batch rejects resulting category collisions and allows category swaps',()=>{
+ const a=makeEdit(7,{}),b=makeEdit(8,{});
+ assert.throws(()=>context.updateRecordsBatch({changes:[
+   {...a,values:{...b.values}}
+ ]}),/duplicate/);
+ const swapA={...a,values:{...b.values}};
+ const swapB={...b,values:{...a.values}};
+ const r=context.updateRecordsBatch({changes:[swapA,swapB]});
+ assert.equal(r.updatedCount,2);
+ assert.equal(rows[3][6],b.values.priority);
+ assert.equal(rows[4][6],a.values.priority);
+ context.updateRecordsBatch({changes:[
+   {...a,expected:{...b.values},values:{...a.values}},
+   {...b,expected:{...a.values},values:{...b.values}}
+ ]});
+ assert.equal(rows[3][6],a.values.priority);
+ assert.equal(rows[4][6],b.values.priority);
+});
+test('altered amount formula blocks every batch item',()=>{
+ formulaBroken=true;
+ const before=rows[3].slice();
+ assert.throws(()=>context.updateRecordsBatch({changes:[makeEdit(7,{count:99})]}),
+   /changed amount formula/);
+ formulaBroken=false;
+ assert.deepEqual(rows[3],before);
+});
+test('write failure attempts rollback of earlier completed ranges',()=>{
+ const before7=rows[3].slice(),before12=rows[8].slice();
+ failNextSetRow=12;
+ const oldFlush=flushCount;
+ assert.throws(()=>context.updateRecordsBatch({changes:[
+   makeEdit(7,{count:before7[7]+2}),
+   makeEdit(12,{count:before12[7]+3})
+ ]}),/rollback was attempted/);
+ assert.deepEqual(rows[3],before7);
+ assert.deepEqual(rows[8],before12);
+ assert.equal(flushCount,oldFlush+1);
+});
+test('unauthorized user cannot submit batch edits',()=>{
+ const p=makeEdit(7,{count:4});email='other@gmail.com';
+ assert.throws(()=>context.updateRecordsBatch({changes:[p]}),/Access denied/);
+ email='rmtaa0916@gmail.com';
+});
+console.log('Batch editor regression checks passed');
