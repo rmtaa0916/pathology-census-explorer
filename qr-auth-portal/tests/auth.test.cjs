@@ -25,6 +25,31 @@ assert.match(endpointUrl.pathname,new RegExp("^/macros/s/[A-Za-z0-9_-]+/exec$"))
 let inline=html.match(/<script>\s*'use strict';([\s\S]*?)<\/script>/);
 assert.ok(inline,'Main browser code present');
 new vm.Script("'use strict';"+inline[1],{filename:'index.html inline script'});
+
+// Returning users may sign in through Google without a repeated account chooser;
+// the button remains available for denied accounts or multi-account browsers.
+assert.match(html,/auto_select:allowAuto/);
+assert.match(html,/button_auto_select:allowAuto/);
+assert.match(html,/use_fedcm_for_button:true/);
+assert.match(html,/google[.]accounts[.]id[.]prompt[(][)]/);
+assert.match(html,/google[.]accounts[.]id[.]disableAutoSelect[(][)]/);
+assert.match(html,/launchGoogle[(]false[)]/);
+// In-page QR scanning never calls the recording API, only selects a verified ref.
+assert.match(html,/id="start-qr-scan"/);
+assert.match(html,/getUserMedia/);
+assert.match(html,/new BarcodeDetector[(]/);
+assert.match(html,/stopQrScan[(][)]/);
+const refFunction=html.match(/function qrRefFromLink[(]raw[)][{]([\\s\\S]*?)\\n[}]/);
+assert.ok(refFunction,"QR reference decoder present");
+const checkRef=vm.runInNewContext(refFunction[0]+"; qrRefFromLink",{
+  URL,window:{location:{origin:"https://rmtaa0916.github.io",pathname:"/pathology-census-explorer/qr-auth-portal/"}},
+  refs:()=>[{id:"TEST-CRP"},{id:"KIT-CRP-001"}]
+});
+assert.equal(checkRef("https://rmtaa0916.github.io/pathology-census-explorer/qr-auth-portal/?ref=TEST-CRP"),"TEST-CRP");
+assert.equal(checkRef("https://rmtaa0916.github.io/pathology-census-explorer/qr-auth-portal/?ref=UNKNOWN"),"");
+assert.equal(checkRef("https://evil.invalid/pathology-census-explorer/qr-auth-portal/?ref=TEST-CRP"),"");
+assert.equal(checkRef("https://rmtaa0916.github.io/other/?ref=TEST-CRP"),"");
+
 assert.doesNotMatch(core,/function qrGetData\(/);
 assert.doesNotMatch(core,/function qrRecordTransaction\(/);
 assert.doesNotMatch(core,/function doGet\(/);
