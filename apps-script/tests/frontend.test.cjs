@@ -54,6 +54,20 @@ vm.runInContext("recordPeriod='all';recordQuery='7';render()",sandbox);
 assert.ok(get('content').innerHTML.includes('data-record-edit="7"'));
 assert.ok(!get('content').innerHTML.includes('data-record-edit="5"'));
 console.log('Frontend syntax and source-editor rendering checks passed');
+// A visible popup must always show actual content and only actionable source rows.
+const detail=vm.runInContext("examinationDrawerMarkup('CRP',0)",sandbox);
+assert.ok(detail.includes('CRP')&&detail.includes('Source records · Dec 1–7'));
+assert.ok(detail.includes('data-drawer-edit-row="5"')&&detail.includes('data-drawer-edit-row="7"'));
+assert.ok(detail.includes('id="drawerExamPeriod"'));
+assert.ok(!detail.includes('data-drawer-edit-row=""'));
+const noRows=vm.runInContext("examinationDrawerMarkup('CRP',1)",sandbox);
+assert.ok(noRows.includes('No source records for this interval.'),'Empty period shows an informative message');
+assert.ok(!noRows.includes('data-drawer-edit-row'),'Empty period never offers a dead Edit inputs action');
+const unknownExam=vm.runInContext("examinationDrawerMarkup('UNKNOWN',0)",sandbox);
+assert.ok(unknownExam.includes('Details unavailable'),'Missing examination has visible fallback UI');
+assert.ok(html.includes('drawer.innerHTML=\'\''),'Closed drawers clear old content');
+assert.ok(html.includes('aria-hidden="true"'),'Hidden drawer is not exposed to screen readers');
+console.log('Examination popup content, valid row actions and empty states passed');
 
 vm.runInContext("staleDashboard=true;showPage('records')",sandbox);
 assert.ok(get('content').innerHTML.includes('changes not yet reflected'));
@@ -178,6 +192,15 @@ assert.ok(html.includes('content:url("${top}")'),'Head artwork repeats in top pa
 assert.ok(html.includes('content:url("${bottom}")'),'Footer artwork repeats in bottom page margin');
 assert.ok(html.includes('margin-left:-16mm')&&html.includes('margin-right:-16mm'),'Full page width of original stationery');
 assert.ok(html.includes('report-appendix-table'),'Appendix has a dedicated six-column table layout');
+assert.ok(html.includes('paginateA4ScreenPreview(preview)'),'Report generation creates paginated on-screen sheets');
+assert.ok(html.includes('className=\'report-paper report-screen-sheet\''),'Every preview page is a separate A4 sheet');
+assert.ok(html.includes('pageBody.scrollHeight<=pageBody.clientHeight+2'),'Measured content never crosses the footer');
+assert.ok(html.includes('rows=Array.from(body.rows)'),'Long tables are split by source row');
+assert.ok(html.includes('partBody.appendChild(copy)'),'Each table row is copied to the next available page');
+assert.ok(html.includes("child.classList?.contains('report-appendix')"),'Appendix begins on a new A4 page');
+assert.ok(html.includes('className=\'report-stationery\''),'Full-color stationery included in every preview page');
+assert.ok(html.includes('#reportPreview #reportPaper{display:none!important}'),'Continuous report is hidden on screen');
+assert.ok(html.includes('#reportPreview #reportPaper{display:block!important}'),'Continuous report remains printable');
 assert.ok(printed.includes('<colgroup>'),'Appendix sets explicit column widths');
 const noAppendix=vm.runInContext("reportDocument(reportAggregate(RECORDS,'all'),false)",sandbox);
 assert.ok(!noAppendix.includes('Appendix A.'),'Unchecked checkbox excludes appendix');
