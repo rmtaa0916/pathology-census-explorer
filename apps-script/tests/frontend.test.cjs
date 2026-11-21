@@ -73,3 +73,15 @@ const dirty=vm.runInContext("(()=>{const original={test:'CRP',patientGroup:'Inpa
 assert.equal(dirty.unchanged,false);
 assert.equal(dirty.changed,true);
 console.log('Frontend quality, zero-total, sorting, dirty-state and stale-status checks passed');
+
+vm.runInContext("SOURCE={monitoringEnabled:false,needsReview:false,issues:[],checkedAt:'2026-11-21T00:00:00.000Z'};showPage('overview')",sandbox);
+assert.ok(get('content').innerHTML.includes('automatic alerts not configured'));
+assert.ok(get('sourceSideHealth').innerHTML.includes('Google Sheets'));
+vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:false,issues:[],checkedAt:'2026-11-21T00:00:00.000Z'};showPage('quality')",sandbox);
+assert.ok(get('content').innerHTML.includes('structure monitoring active'));
+assert.ok(get('content').innerHTML.includes('Source compatibility monitor'));
+vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:true,severity:'critical',issues:[{kind:'column_count',message:'New source column requires review'}],checkedAt:'2026-11-21T00:00:00.000Z'};showPage('records')",sandbox);
+assert.ok(get('content').innerHTML.includes('Source change detected'));
+assert.ok(get('content').innerHTML.includes('New source column requires review'));
+assert.ok(get('content').innerHTML.includes('data-check-source'));
+console.log('Frontend monitored/unmonitored/review-required source-status checks passed');
