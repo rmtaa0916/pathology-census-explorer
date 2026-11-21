@@ -46,6 +46,7 @@ function readDemoRows_() {
     const row = rows[i];
     if (row[10] !== CENSUS.demoMarker || !CENSUS.periods.includes(row[0]) ||
         !Number.isInteger(row[7]) || row[7] < 0 ||
+        typeof row[8] !== 'number' || !Number.isFinite(row[8]) || row[8] < 0 ||
         typeof row[9] !== 'number' || !Number.isFinite(row[9])) {
       throw new Error('Invalid or non-synthetic data at row ' + (i + CENSUS.headerRow));
     }
@@ -84,6 +85,12 @@ function censusFromRows_(rows) {
     entry.source_rows[periodIndex] = i + CENSUS.headerRow;
     exams.set(test, true);
   }
+  const records = rows.slice(1).map((r, i) => ({
+    sheetRow: CENSUS.firstDataRow + i,
+    period: r[0], test: String(r[3]),
+    patientGroup: String(r[4]), billing: String(r[5]), priority: String(r[6]),
+    count: r[7], rate: r[8], amount: r[9]
+  }));
   const entries = [...grouped.values()];
   entries.forEach(e => { if (e.volume > 0) e.unit_rate = e.reported_income / e.volume; });
   const examinationSummary = [...exams.keys()].map(test => {
@@ -106,7 +113,7 @@ function censusFromRows_(rows) {
       google_sheets_url:'https://docs.google.com/spreadsheets/d/' + CENSUS.spreadsheetId + '/edit',
       source_sheets:[CENSUS.sheetName],blank_sheets:[],is_demo:true
     },
-    exams:examinationSummary,entries,blood_processing:[],
+    exams:examinationSummary,entries,records,blood_processing:[],
     cautions:[{severity:'low',title:'Synthetic records only',
       description:'These values are for workflow testing and are not actual laboratory results.'}],
     summary_stats:{
@@ -156,6 +163,88 @@ function updateDemoCount(payload) {
     sheet.getRange(row,8).setValue(count);
     SpreadsheetApp.flush();
     return {success:true,updatedRange:CENSUS.sheetName+'!H'+row};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+/**
+ * Update only the six input columns D:I in a synthetic source row.
+ * A:C define the fixed reporting periods; J is a spreadsheet formula;
+ * K is the non-editable safety marker. They are never written here.
+ */
+function updateDemoRecord(payload) {
+  requireOwner_();
+  if (!payload || typeof payload !== 'object' ||
+      !Number.isInteger(payload.sheetRow) ||
+      payload.sheetRow < CENSUS.firstDataRow ||
+      payload.sheetRow > CENSUS.lastDataRow ||
+      !CENSUS.periods.includes(payload.period) ||
+      !payload.expected || !payload.values) {
+    throw new Error('Invalid record update request.');
+  }
+  const fields = ['test', 'patientGroup', 'billing', 'priority', 'count', 'rate'];
+  const clean = value => {
+    if (!value || typeof value !== 'object' || !fields.every(f => Object.hasOwn(value, f))) {
+      throw new Error('Incomplete record values.');
+    }
+    const v = {
+      test: value.test, patientGroup: value.patientGroup, billing: value.billing,
+      priority: value.priority, count: value.count, rate: value.rate
+    };
+    if (typeof v.test !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9 .()+/_-]{0,79}$/.test(v.test) ||
+        v.test !== v.test.trim() ||
+        !Number.isInteger(v.count) || v.count < 0 || v.count > 100000 ||
+        typeof v.rate !== 'number' || !Number.isFinite(v.rate) ||
+        v.rate < 0 || v.rate > 1000000 ||
+        Math.abs(v.rate * 100 - Math.round(v.rate * 100)) > 0.000001) {
+      throw new Error('Invalid examination, count, or rate.');
+    }
+    const patient = ['Inpatient', 'Outpatient'].includes(v.patientGroup) &&
+      ['CHA', 'PAY'].includes(v.billing) &&
+      ['STAT', 'ROUTINE'].includes(v.priority);
+    const operational = v.patientGroup === 'Employee' &&
+      v.billing === 'QFS' && v.priority === 'QFS';
+    if (!patient && !operational) {
+      throw new Error('Invalid patient group, billing or priority combination.');
+    }
+    return v;
+  };
+  const expected = clean(payload.expected);
+  const values = clean(payload.values);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getDemoSheet_();
+    const range = sheet.getRange(payload.sheetRow, 1, 1, 11);
+    const old = range.getValues()[0];
+    const originalFields = [old[3], old[4], old[5], old[6], old[7], old[8]];
+    if (old[0] !== payload.period || old[10] !== CENSUS.demoMarker ||
+        originalFields.some((v, i) => v !== expected[fields[i]])) {
+      throw new Error('This record has changed. Refresh before editing again.');
+    }
+    if (sheet.getRange(payload.sheetRow, 10).getFormula() !==
+        '=H' + payload.sheetRow + '*I' + payload.sheetRow) {
+      throw new Error('The amount formula is missing; update cancelled.');
+    }
+    // Reject duplicate category identities within the same reporting period.
+    if (fields.slice(0, 4).some(f => values[f] !== expected[f])) {
+      const rows = readDemoRows_();
+      const collision = rows.slice(1).some((r, idx) =>
+        CENSUS.firstDataRow + idx !== payload.sheetRow &&
+        r[0] === payload.period && r[3] === values.test &&
+        r[4] === values.patientGroup && r[5] === values.billing &&
+        r[6] === values.priority);
+      if (collision) throw new Error('That category already exists in the selected reporting interval.');
+    }
+    sheet.getRange(payload.sheetRow, 4, 1, 6).setValues([[
+      values.test, values.patientGroup, values.billing,
+      values.priority, values.count, values.rate
+    ]]);
+    SpreadsheetApp.flush();
+    return {success: true, sheetRow: payload.sheetRow,
+      updatedRange: CENSUS.sheetName + '!D' + payload.sheetRow + ':I' + payload.sheetRow};
   } finally {
     lock.releaseLock();
   }
