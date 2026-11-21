@@ -6,4 +6,4 @@ WORKDIR /var/www/html
 COPY src/ /var/www/html/src/
 COPY public/ /var/www/html/public/
 EXPOSE 10000
-CMD ["sh", "-c", "set -eu; port=\"\${PORT:-10000}\"; sed -ri \"s/^Listen [0-9]+$/Listen \${port}/\" /etc/apache2/ports.conf; sed -ri \"s/:80>/:\${port}>/g\" /etc/apache2/sites-available/000-default.conf; exec apache2-foreground"]
+CMD ["sh", "-c", "set -eu; port=\"${PORT:-10000}\"; sed -ri \"s/^Listen [0-9]+$/Listen ${port}/\" /etc/apache2/ports.conf; sed -ri \"s/:80>/:${port}>/g\" /etc/apache2/sites-available/000-default.conf; exec apache2-foreground"]
