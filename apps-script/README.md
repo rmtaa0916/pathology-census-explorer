@@ -1,5 +1,7 @@
 # Pathology Census Explorer — Apps Script working copy
 
+**Live app shortcut:** [Pathology Census Explorer](https://tinyurl.com/Pathology-Census-Explorer) (subject to existing Google access permissions).
+
 The `apps-script` branch implements the Google Apps Script web application. The original PHP version remains on `main`.
 
 ## Single working dataset
