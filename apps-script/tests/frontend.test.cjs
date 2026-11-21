@@ -23,7 +23,7 @@ const elements=new Map();
 function get(id){
  if(!elements.has(id))elements.set(id,{
    innerHTML:'',value:'',classList:{add(){},remove(){},toggle(){}},
-   addEventListener(){},querySelector(){return null},querySelectorAll(){return []},
+   addEventListener(){},getAttribute(){return 'data:image/webp;base64,TEST';},querySelector(){return null},querySelectorAll(){return []},
    insertAdjacentHTML(where,text){this.innerHTML=text+this.innerHTML}
  });
  return elements.get(id);
@@ -110,3 +110,34 @@ assert.equal(vm.runInContext("stagedEdits.size",sandbox),0);
 assert.ok(html.includes('data:image/webp;base64,'),'LCP emblem must be bundled for offline display');
 assert.ok(html.includes('Pathology and Laboratory Medicine Department'));
 console.log('Batch staging, pending-row rendering, structural pause, and LCP branding tests passed');
+
+const models=vm.runInContext("({full:reportAggregate(RECORDS,'all'),one:reportAggregate(RECORDS,'0'),empty:reportAggregate(RECORDS,'1')})",sandbox);
+assert.equal(models.full.total.count,4);
+assert.equal(models.full.total.amount,4648);
+assert.equal(models.full.examinations[0].count,4);
+assert.equal(models.full.periodLabel,'Full coverage · December 1–31, 2023');
+assert.equal(models.full.intervals.length,4);
+assert.equal(models.one.total.count,4);
+assert.equal(models.empty.total.count,0);
+assert.equal(models.one.rows,2);
+assert.equal(models.full.categories.length,2);
+assert.throws(()=>vm.runInContext("reportAggregate(RECORDS,'99')",sandbox),/Unknown reporting period/);
+vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:false,issues:[]};reportPeriod='all';stagedEdits.clear();staleDashboard=false;batchState='ready';showPage('reports')",sandbox);
+const setup=get('content').innerHTML;
+assert.ok(setup.includes('A4 formal census reports'));
+assert.ok(setup.includes('Full coverage'));
+assert.ok(setup.includes('data-report-generate'));
+assert.ok(setup.includes('Include full category-detail appendix'));
+vm.runInContext("reportPeriod='0';render()",sandbox);
+assert.ok(get('content').innerHTML.includes('Dec 1–7'));
+const printed=vm.runInContext("reportDocument(reportAggregate(RECORDS,'all'),true)",sandbox);
+assert.ok(printed.includes('IMMUNOLOGY CENSUS REPORT'));
+assert.ok(printed.includes('LUNG CENTER OF THE PHILIPPINES'));
+assert.ok(printed.includes('Pathology and Laboratory Medicine Department'));
+assert.ok(printed.includes('Full coverage'));
+assert.ok(printed.includes('Appendix A.'));
+assert.ok(printed.includes('₱4,648.00'));
+assert.ok(printed.includes('Prepared by: Name / position / date'));
+assert.ok(printed.includes('not distinct patients'));
+assert.ok(html.includes('@page{size:A4 portrait'));
+console.log('A4 formal report selected/full coverage, source amounts, appendix and print styles passed');
