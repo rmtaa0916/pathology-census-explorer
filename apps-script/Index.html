@@ -165,10 +165,10 @@ function closeDrawer(force=false){
       return false;
     }
     const form=drawer.querySelector('#recordEditForm');
-    if(form && drawerOriginal && !drawerCommitted && formHasChanges(form,drawerOriginal) &&
+    if(form && drawerStarting && !drawerCommitted && formHasChanges(form,drawerStarting) &&
       !confirm('Discard your unsaved source-record changes?'))return false;
   }
-  drawerEpoch++;drawerOriginal=null;drawerCommitted=false;
+  drawerEpoch++;drawerOriginal=null;drawerStarting=null;drawerCommitted=false;
   document.getElementById('backdrop').classList.remove('show');
   drawer.classList.remove('show');
   return true;
@@ -226,7 +226,7 @@ document.getElementById('backdrop').addEventListener('click',closeDrawer);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 window.addEventListener('beforeunload',e=>{
   const form=document.getElementById('recordEditForm');
-  if(drawerSaving||undoInProgress||(form&&drawerOriginal&&!drawerCommitted&&formHasChanges(form,drawerOriginal))){
+  if(drawerSaving||undoInProgress||batchState!=='ready'||stagedEdits.size>0||(form&&drawerStarting&&!drawerCommitted&&formHasChanges(form,drawerStarting))){
     e.preventDefault();e.returnValue='';
   }
 });
@@ -407,7 +407,7 @@ function records(){
     'Edit source inputs in the connected working copy. Charts, totals and calculated amounts refresh after saving.')}
     <div class="record-note"><strong>Editable:</strong> examination name, patient group, billing, priority, test count and rate.
     <strong>Read-only:</strong> period/date boundaries, amount formulas, source-status column and dashboard totals.
-    Changes are validated against the current Sheet before saving.</div>
+    Stage several records and Save all once. Marked rows are local previews; dashboard totals update after the batch is committed.</div>
     <div class="kpi-grid">
       ${metricCard('Matching source rows',fmtInt(all.length),'of '+fmtInt(RECORDS.length)+' source rows',true)}
       ${metricCard('Matching examination count',fmtInt(volume),'Calculated from the filtered rows')}
@@ -453,13 +453,14 @@ function records(){
 }
 function openRecordEditor(sheetRow){
   if(SOURCE?.needsReview){alert('Source changed: review compatibility before editing.');return;}
-  if(drawerSaving||undoInProgress)return;
+  if(drawerSaving||undoInProgress||batchState!=='ready')return;
   const record=RECORDS.find(r=>r.sheetRow===sheetRow);
   if(!record){alert('Source record is unavailable; refresh the dashboard.');return;}
   const drawer=document.getElementById('drawer');
   const thisEditor=++drawerEpoch;drawerCommitted=false;
-  drawerOriginal={test:record.test,patientGroup:record.patientGroup,
-    billing:record.billing,priority:record.priority,count:record.count,rate:record.rate};
+  drawerOriginal=recordValues(record);
+  drawerStarting={...(stagedEdits.get(sheetRow)?.values||drawerOriginal)};
+  const shown=drawerStarting;
   const exams=[...new Set(RECORDS.map(r=>r.test))].sort();
   const combos={Inpatient:['CHA','PAY'],Outpatient:['CHA','PAY'],Employee:['QFS']};
   drawer.innerHTML=`<button type="button" class="close" id="closeDrawer">Close ×</button>
@@ -468,45 +469,56 @@ function openRecordEditor(sheetRow){
     <p class="fine">Source row ${record.sheetRow} · ${escapeHtml(record.period)}, 2023 · ${escapeHtml(record.patientGroup)}</p>
     <form id="recordEditForm" class="record-editor">
       <label class="full">Examination name
-        <input name="test" maxlength="80" required list="examChoices" value="${escapeHtml(record.test)}" autocomplete="off">
+        <input name="test" maxlength="80" required list="examChoices" value="${escapeHtml(shown.test)}" autocomplete="off">
       </label>
       <datalist id="examChoices">${exams.map(t=>`<option value="${escapeHtml(t)}"></option>`).join('')}</datalist>
       <label>Patient group
-        <select name="patientGroup">${recordOptions(['Inpatient','Outpatient','Employee'],record.patientGroup)}</select>
+        <select name="patientGroup">${recordOptions(['Inpatient','Outpatient','Employee'],shown.patientGroup)}</select>
       </label>
       <label>Billing
-        <select name="billing">${recordOptions(combos[record.patientGroup],record.billing)}</select>
+        <select name="billing">${recordOptions(combos[shown.patientGroup],shown.billing)}</select>
       </label>
       <label>Priority
-        <select name="priority">${recordOptions(record.patientGroup==='Employee'?['QFS']:['STAT','ROUTINE'],record.priority)}</select>
+        <select name="priority">${recordOptions(shown.patientGroup==='Employee'?['QFS']:['STAT','ROUTINE'],shown.priority)}</select>
       </label>
       <label>Test count
-        <input name="count" required type="number" min="0" max="100000" step="1" inputmode="numeric" value="${record.count}">
+        <input name="count" required type="number" min="0" max="100000" step="1" inputmode="numeric" value="${shown.count}">
       </label>
       <label>Unit rate (₱)
-        <input name="rate" required type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="${record.rate}">
+        <input name="rate" required type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="${shown.rate}">
       </label>
       <div class="full record-amount">
         <span>Calculated amount (read-only)</span>
-        <strong id="recordComputedAmount">${fmtMoney(record.amount)}</strong>
+        <strong id="recordComputedAmount">${fmtMoney(shown.count*shown.rate)}</strong>
         <div class="fine">Count × rate; Google Sheets maintains the source formula.</div>
       </div>
       <div class="record-actions">
         <button type="button" class="close" id="cancelRecordEdit">Cancel</button>
-        <button type="submit" class="save" id="saveRecordButton">Save changes</button>
+        <button type="button" class="batch-primary" id="stageRecordButton">Stage for Save all</button>
+        <button type="submit" class="save" id="saveRecordButton">Save this row now</button>
       </div>
       <div class="record-status full" id="recordEditStatus" role="status"></div>
     <div class="record-actions" id="recordRefreshActions" hidden>
       <button type="button" class="sourcebtn" id="retryRecordRefresh">Reload latest Sheet values</button>
     </div>
     </form>
-    <p class="fine">Reporting period, date range, formula and source-status column cannot be edited here.</p>`;
+    <p class="fine">Stage multiple edits locally without waiting for Google Sheets. Select Save all when ready. Reporting dates, formulas and source-status fields remain read-only.</p>`;
   drawer.classList.add('show');
   document.getElementById('backdrop').classList.add('show');
   drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
   drawer.querySelector('#cancelRecordEdit').addEventListener('click',closeDrawer);
   const form=drawer.querySelector('#recordEditForm');
   const field=name=>form.elements.namedItem(name);
+  drawer.querySelector('#stageRecordButton').addEventListener('click',()=>{
+    if(batchState!=='ready'||drawerSaving||!form.reportValidity())return;
+    try {
+      const staged=stageSourceRecord(record,recordFormValues(form));
+      closeDrawer(true);batchNotice=staged
+        ? stagedEdits.size+' records staged. You can continue editing before Save all.'
+        : 'No changes remain for this record.';
+      render();
+    } catch(error){drawer.querySelector('#recordEditStatus').textContent=String(error?.message||error);}
+  });
   const setChoices=(select,choices,value)=>{
     select.innerHTML=recordOptions(choices,choices.includes(value)?value:choices[0]);
   };
@@ -597,6 +609,7 @@ function openRecordEditor(sheetRow){
     }
     if(thisEditor!==drawerEpoch)return;
     drawerCommitted=true;
+    stagedEdits.delete(record.sheetRow);
     lastCommittedEdit={sheetRow:record.sheetRow,period:record.period,expected:values,values:{...drawerOriginal}};
     await refreshAfterCommit();
   });
@@ -605,9 +618,18 @@ function openRecordEditor(sheetRow){
 function render(){
   updateSourceSidebar();
   const warning=staleDashboard?'<div class="record-note" role="alert">Google Sheets may contain changes not yet reflected here. Use Refresh data before making another edit.</div>':'';
-  document.getElementById('content').innerHTML=sourceHealthPanel()+warning+({overview,periods,examinations,breakdown,records,quality})[activePage]();
+  document.getElementById('content').innerHTML=sourceHealthPanel()+batchToolbar()+warning+({overview,periods,examinations,breakdown,records,quality})[activePage]();
 }
-document.getElementById('content').addEventListener('click',e=>{const health=e.target.closest('[data-check-source]');if(health){if(health.disabled)return;health.disabled=true;health.textContent='Checking…';google.script.run.withSuccessHandler(status=>{SOURCE=status;DATA.sourceStatus=status;render();}).withFailureHandler(err=>{health.disabled=false;health.textContent='Retry check';alert('Unable to check source: '+String(err?.message||err));}).getSourceStatus();return;}const undo=e.target.closest('[data-undo-last]');if(undo){undoLastEdit();return;}const editInterval=e.target.closest('[data-edit-interval]');if(editInterval){recordPeriod=INTERVALS[selectedInterval].label;recordGroup=periodSection==='operational'?'Employee':periodSection==='inpatient'?'Inpatient':periodSection==='outpatient'?'Outpatient':'all';recordPage=0;showPage('records');return;}const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const dir=e.target.closest('[data-sort-dir]');if(dir){tableSortDir=tableSortDir==='desc'?'asc':'desc';render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
+document.getElementById('content').addEventListener('click',e=>{
+  const saveAll=e.target.closest('[data-batch-save]');if(saveAll){saveStagedEdits();return;}
+  const reviewBatch=e.target.closest('[data-batch-review]');if(reviewBatch){reviewStagedEdits();return;}
+  const discard=e.target.closest('[data-batch-discard]');if(discard){
+    if(batchState==='ready'&&stagedEdits.size&&confirm('Discard all '+stagedEdits.size+' unsaved changes?')){
+      stagedEdits.clear();batchNotice='Staged edits discarded. No Sheet data changed.';render();
+    }return;
+  }
+  const reconcile=e.target.closest('[data-batch-reconcile]');if(reconcile){reconcileStagedEdits();return;}
+  const health=e.target.closest('[data-check-source]');if(health){if(health.disabled)return;health.disabled=true;health.textContent='Checking…';google.script.run.withSuccessHandler(status=>{SOURCE=status;DATA.sourceStatus=status;render();}).withFailureHandler(err=>{health.disabled=false;health.textContent='Retry check';alert('Unable to check source: '+String(err?.message||err));}).getSourceStatus();return;}const undo=e.target.closest('[data-undo-last]');if(undo){undoLastEdit();return;}const editInterval=e.target.closest('[data-edit-interval]');if(editInterval){recordPeriod=INTERVALS[selectedInterval].label;recordGroup=periodSection==='operational'?'Employee':periodSection==='inpatient'?'Inpatient':periodSection==='outpatient'?'Outpatient':'all';recordPage=0;showPage('records');return;}const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const dir=e.target.closest('[data-sort-dir]');if(dir){tableSortDir=tableSortDir==='desc'?'asc':'desc';render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
 document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='recordSearch'){const v=e.target.value,pos=e.target.selectionStart;recordQuery=v;recordPage=0;render();const el=document.getElementById('recordSearch');if(el){el.focus();el.setSelectionRange(pos,pos);}return;}if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;const count=document.getElementById('examCount');if(count)count.textContent=filteredExams().length+' examinations';document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
 );
 document.getElementById('content').addEventListener('change',e=>{if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render();}else if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();}else if(e.target.id==='sortExams'){tableSort=e.target.value;render()}});
