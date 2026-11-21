@@ -33,7 +33,8 @@ const book={
 const values=new Map(),mail=[],triggers=[];
 const props={
  getProperty:k=>values.has(k)?values.get(k):null,
- setProperty:(k,v)=>values.set(k,String(v))
+ setProperty:(k,v)=>values.set(k,String(v)),
+ deleteProperty:k=>values.delete(k)
 };
 function builder(name){
  const item={getHandlerFunction:()=>name};
@@ -132,4 +133,16 @@ test('alert email contains only structural description, not source cell values',
 test('restoring original schema clears warning and allows editing',()=>{
  assert.equal(ctx.getSourceStatus().needsReview,false);
  assert.equal(ctx.assertSourceSafeToEdit_(),true);
+});
+
+test('approval cannot bless an unsupported column layout',()=>{
+ lastColumn=12;
+ assert.throws(()=>ctx.approveSourceBaseline(),/does not match/);
+ lastColumn=11;
+});
+test('owner can approve a reviewed, code-compatible baseline',()=>{
+ const result=ctx.approveSourceBaseline();
+ assert.equal(result.approved,true);
+ assert.equal(ctx.getSourceStatus().needsReview,false);
+ assert.equal(ctx.getSourceStatus().monitoringEnabled,true);
 });
