@@ -123,7 +123,31 @@ function metricCard(label,val,note,primary=false){return `<section class="card k
 function barList(list,metric='volume',maxRows=7){let max=Math.max(...list.map(e=>e[metric]),1);return list.slice(0,maxRows).map((r,i)=>`<div class="bar-row"><div class="bar-name" title="${escapeHtml(r.test||r.label)}">${escapeHtml(r.test||r.label)}</div><div class="bar-bg"><div class="bar-fill" style="width:${r[metric]/max*100}%;background:${i===0?'#087f74':'#a7ccc5'}"></div></div><div class="bar-val">${metric==='volume'?fmtInt(r[metric]):fmtMoney(r[metric]).replace(/\.\d+$/,'')}</div></div>`).join('')}
 function mixCard(){const t=breakouts.reduce((a,b)=>a+b.volume,0);return `<section class="card"><div class="card-header"><div><h3>Workload distribution</h3><div class="minor">Inpatient, outpatient and operational activity</div></div></div><div class="segmented">${breakouts.map(b=>`<div style="width:${100*b.volume/t}%;background:${b.c}" title="${b.label}: ${b.volume}"></div>`).join('')}</div><div class="mix-grid">${breakouts.map(b=>`<div class="mix-item"><span class="swatch" style="background:${b.c}"></span><span>${b.label.replace(' · employee section','')}</span><strong class="mix-num">${b.volume}</strong></div>`).join('')}</div><div class="insight">Patient-section examinations: <strong>${S.patient_volume}</strong>. Operational QFS: <strong>${S.qfs_volume}</strong>. The latter is kept separate from patient workload.</div></section>`}
 function rankings(){const sorted=[...EXAMS].sort((a,b)=>b[chartMetric]-a[chartMetric]);const top=[...EXAMS].sort((a,b)=>b.volume-a.volume)[0];const n=top?top.volume:0;const p=S.total_volume>0?100*n/S.total_volume:0;const q=S.reported_income>0?100*(top?.reported_income||0)/S.reported_income:0;return `<section class="card"><div class="card-header"><div><h3>Highest-volume examinations</h3><div class="minor">${EXAMS.length} test categories · ranked by ${chartMetric==='volume'?'workload':'illustrative amount'}</div></div><div class="switcher"><button type="button" data-chart="volume" class="${chartMetric==='volume'?'active':''}">Volume</button><button type="button" data-chart="reported_income" class="${chartMetric==='reported_income'?'active':''}">Amount</button></div></div>${barList(sorted,chartMetric,7)}<div class="insight">${top?escapeHtml(top.test):'No tests'}: <strong>${fmtInt(n)} / ${fmtInt(S.total_volume)} examinations (${p.toFixed(1)}%)</strong>, accounting for <strong>${fmtMoney(top?.reported_income||0)} (${q.toFixed(1)}%)</strong> of the illustrative amount.</div></section>`}
-function issuePreview(){return `<section class="card"><div class="card-header"><div><h3>Data checks</h3><div class="minor">Demonstration data policy</div></div><button class="sourcebtn" data-go="quality">Review all →</button></div><div class="flag-list"><div class="flag"><b>All records are synthetic</b><small>Demo</small></div><div class="flag"><b>Four reporting intervals supported</b><small class="neutral">Ready</small></div><div class="flag"><b>Original laboratory worksheets are excluded</b><small class="neutral">Isolated</small></div><div class="flag"><b>Amounts are illustrative only</b><small>Demo</small></div></div></section>`}
+
+function qualityQuickChecks(){
+  const counts=RECORDS.reduce((sum,row)=>sum+Number(row.count||0),0);
+  const amount=RECORDS.reduce((sum,row)=>sum+Number(row.amount||0),0);
+  const lengths=INTERVALS.map(p=>RECORDS.filter(row=>row.period===p.label).length);
+  const invalid=RECORDS.filter(row=>!checkedRecord(recordInputs(row))).length;
+  const ids=new Set(RECORDS.map(r=>[r.period,r.test,r.patientGroup,r.billing,r.priority].join('|')));
+  return [
+    {label:'Examination total reconciliation',passed:counts===S.total_volume,detail:fmtInt(counts)+' examinations'},
+    {label:'Calculated amount reconciliation',passed:Math.abs(amount-S.reported_income)<.01,detail:fmtMoney(amount)+' calculated from records'},
+    {label:'Reporting period records',passed:lengths.length===4&&lengths.every(n=>n===198),detail:lengths.join(' / ')+' records'},
+    {label:'Editable value constraints',passed:invalid===0,detail:invalid+' invalid record(s)'},
+    {label:'Unique period / examination / category keys',passed:ids.size===RECORDS.length,detail:ids.size+' distinct category rows'}
+  ];
+}
+function issuePreview(){
+ const checks=qualityQuickChecks();
+ return `<section class="card"><div class="card-header"><div><h3>Data checks</h3>
+   <div class="minor">${IS_DEMO?'Synthetic dataset':'Connected dataset'} · consistency checks</div></div>
+   <button class="sourcebtn" data-go="quality">Review all →</button></div>
+   <div class="flag-list">${checks.map(c=>`<div class="flag"><b>${escapeHtml(c.label)}</b>
+   <small class="${c.passed?'neutral':''}">${c.passed?'Pass':'Review'}</small></div>`).join('')}</div>
+   <p class="fine">Checks compare the loaded record values. They do not replace a live worksheet schema scan.</p>
+ </section>`;
+}
 function overview(){const patient=ENTRIES.filter(e=>e.section!=='operational');const ip=patient.filter(e=>e.section==='inpatient').reduce((a,e)=>a+e.volume,0);const op=patient.filter(e=>e.section==='outpatient').reduce((a,e)=>a+e.volume,0);const statShare=S.patient_volume?S.stat_volume/S.patient_volume*100:0;return `${pageIntro(IS_DEMO?'Immunology / synthetic demonstration':'Immunology / census data','Immunology census overview',IS_DEMO?'Demo-only examination activity and illustrative amounts.':'Examination activity and calculated amounts for four reporting intervals.')}
 ${IS_DEMO?'<div class="warning"><span class="warn-ico">!</span><div><strong>Synthetic data — demonstration only</strong><p>Values shown here are artificially generated for testing.</p></div></div>':''}
 <div class="kpi-grid">${metricCard(IS_DEMO?'Total demo workload':'Total workload',fmtInt(S.total_volume),`${fmtInt(S.patient_volume)} patient-section + ${fmtInt(S.qfs_volume)} QFS`,true)}${metricCard('Patient-section examinations',fmtInt(S.patient_volume),`Inpatient ${fmtInt(ip)} · Outpatient ${fmtInt(op)}`)}${metricCard(IS_DEMO?'Illustrative amount':'Calculated amount',fmtMoney(S.reported_income),'Count × listed rate; not cash received')}${metricCard('STAT share of patient work',statShare.toFixed(1)+'%',`${fmtInt(S.stat_volume)} STAT · ${fmtInt(S.routine_volume)} routine`)}</div>
@@ -137,11 +161,26 @@ function segmentCard(title,items,metric){let total=items.reduce((a,r)=>a+r[metri
 function breakdown(){let services=breakouts.map(b=>({label:b.label,volume:b.volume,reported_income:b.income}));let urgent=[{label:'STAT',volume:S.stat_volume},{label:'Routine',volume:S.routine_volume}];let pay=['CHA','PAY','QFS'].map(x=>{let es=ENTRIES.filter(e=>e.payer===x);return {label:x,volume:es.reduce((a,e)=>a+e.volume,0),reported_income:es.reduce((a,e)=>a+e.reported_income,0)}});const ip=ENTRIES.filter(e=>e.section==='inpatient').reduce((a,e)=>a+e.volume,0),op=ENTRIES.filter(e=>e.section==='outpatient').reduce((a,e)=>a+e.volume,0);return `${pageIntro(IS_DEMO?'Service analysis / synthetic December 2023':'Service analysis / December 2023','Workload and calculated amounts',IS_DEMO?'Demonstration figures only.':'Inpatient, outpatient, billing and priority composition.')}
 <div class="kpi-grid">${metricCard('Inpatient activity',fmtInt(ip),`${(ip/Math.max(1,S.total_volume)*100).toFixed(1)}% of demo tests`,true)}${metricCard('Outpatient activity',fmtInt(op),`${(op/Math.max(1,S.total_volume)*100).toFixed(1)}% of demo tests`)}${metricCard('STAT patient tests',fmtInt(S.stat_volume),`${(S.stat_volume/Math.max(1,S.patient_volume)*100).toFixed(1)}% of patient tests`)}${metricCard('Routine patient tests',fmtInt(S.routine_volume),`${(S.routine_volume/Math.max(1,S.patient_volume)*100).toFixed(1)}% of patient tests`)}</div>
 <div class="grid2">${segmentCard('Workload by category',services,'volume')}${segmentCard('Illustrative amount by category',services,'reported_income')}</div><div class="grid2">${segmentCard('Patient examination priority',urgent,'volume')}${segmentCard('Billing categories (demo codes)',pay,'volume')}</div><div class="section-heading">Detailed category totals</div><div class="card table-wrap">${mixTable()}</div>`}
-function quality(){return `${pageIntro('Governance / synthetic data','Data quality review','Synthetic records are deliberately isolated from real census worksheets.')}
-<div class="kpi-grid">${metricCard('Demo count reconciliation','Pass',`${fmtInt(S.total_volume)} generated tests`,true)}${metricCard('Source isolation','Enabled','DEMO - Weekly Census tab only')}${metricCard('Test categories',fmtInt(EXAMS.length),'Simulated examinations')}${metricCard('Reporting periods','4','December 2023 demo')}</div>
-<div class="warning"><span class="warn-ico">!</span><div><strong>Never interpret demo values as real pathology census data.</strong><p>Test counts and monetary amounts are artificial. Source connection requires Google API credentials on a private PHP server.</p></div></div>
-<div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`}
 
+function quality(){
+ const checks=qualityQuickChecks();
+ const passed=checks.filter(c=>c.passed).length;
+ return `${pageIntro(IS_DEMO?'Governance / demonstration data':'Governance / census data','Data quality review',
+   'Checks of totals, record categories and reporting intervals from the currently loaded data.')}
+ <div class="kpi-grid">
+   ${metricCard('Checks passed',passed+' / '+checks.length,'Calculated against loaded data',true)}
+   ${metricCard('Total examinations',fmtInt(S.total_volume),'Summed from records')}
+   ${metricCard('Test categories',fmtInt(EXAMS.length),'Examination names')}
+   ${metricCard('Reporting intervals','4','December 2023')}
+ </div>
+ ${IS_DEMO?'<div class="warning"><span class="warn-ico">!</span><div><strong>Sample data only</strong><p>These records are generated for testing, not for institutional reporting.</p></div></div>':''}
+ ${checks.map(check=>`<section class="card quality-card">
+  <div class="severity ${check.passed?'low':'med'}"></div>
+  <div><b>${escapeHtml(check.label)} — ${check.passed?'Pass':'Review'}</b>
+  <p>${escapeHtml(check.detail)}</p></div></section>`).join('')}
+ <p class="fine">These checks do not inspect remote worksheet formulas or structural changes. Source-schema protection remains enforced by the PHP batch-write planner when saving.</p>
+ <div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`;
+}
 let drawerReturnFocus=null;
 function activateDrawer(title){
   const drawer=document.getElementById('drawer');
@@ -231,7 +270,7 @@ let selectedInterval=0, periodSection='all';
 function periodEntries(){return ENTRIES.filter(e=>periodSection==='all' || e.section===periodSection)}
 function periodSums(rows){return INTERVALS.map((it,i)=>rows.reduce((n,e)=>n+(Number(e.weeks[i])||0),0))}
 function periodTestRows(rows){let a=EXAMS.map(x=>({test:x.test, weeks:INTERVALS.map((it,i)=>rows.filter(e=>e.test===x.test).reduce((n,e)=>n+(Number(e.weeks[i])||0),0))}));return a.filter(x=>x.weeks.some(n=>n>0)).sort((a,b)=>b.weeks.reduce((s,n)=>s+n,0)-a.weeks.reduce((s,n)=>s+n,0))}
-function intervalPanel(){const sums=periodSums(periodEntries());return `<div class="interval-grid">${INTERVALS.map((it,i)=>`<button class="interval-card ${i===selectedInterval?'is-selected':''}" data-interval="${i}" aria-pressed="${i===selectedInterval}"><div class="interval-title">${it.label}, 2023</div><div class="interval-value">${fmtInt(sums[i])}</div><div class="interval-caption">demo examinations</div><div class="interval-pill">Synthetic · not clinical</div></button>`).join('')}</div>`}
+function intervalPanel(){const sums=periodSums(periodEntries());return `<div class="interval-grid">${INTERVALS.map((it,i)=>`<button class="interval-card ${i===selectedInterval?'is-selected':''}" data-interval="${i}" aria-pressed="${i===selectedInterval}"><div class="interval-title">${it.label}, 2023</div><div class="interval-value">${fmtInt(sums[i])}</div><div class="interval-caption">demo examinations</div><div class="interval-pill">${IS_DEMO?'Synthetic · not clinical':'Recorded'}</div></button>`).join('')}</div>`}
 function periods(){const rows=periodEntries(),totals=periodSums(rows),tests=periodTestRows(rows),total=totals.reduce((a,b)=>a+b,0),selected=INTERVALS[selectedInterval];return `${pageIntro(IS_DEMO?'Synthetic census / December 2023':'Immunology census / December 2023','Reporting intervals',IS_DEMO?'Synthetic values for interaction testing.':'Four reporting intervals; totals are not normalized by interval length.')}
 <div class="period-note"><b>Reporting intervals:</b> The final range covers ten days, so raw counts are not normalized by interval length.</div>
 <div class="period-head"><div><strong>December 2023 · census periods</strong><div class="minor">Select an interval to inspect examination detail</div></div><span class="smalltag">Synthetic month</span></div>
