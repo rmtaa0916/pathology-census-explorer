@@ -47,12 +47,12 @@ const context={
 };
 vm.createContext(context);vm.runInContext(source,context,{filename:'Code.gs'});
 function test(name,fn){fn();console.log('PASS',name);}
-test('22 exams; 198 groups; four weeks; synthetic totals',()=>{
+test('22 exams; 198 groups; four weeks; working-copy totals',()=>{
  const d=context.getDataset();
  assert.equal(d.exams.length,22);assert.equal(d.entries.length,198);
  assert.equal(d.summary_stats.total_volume,expected);
  assert.equal(d.quality.passed,true);
- assert.equal(d.quality.checks.length,8);
+ assert.equal(d.quality.checks.length,7);
  assert.equal(d.quality.totalRecords,792);
  assert.equal(d.entries.find(e=>e.test==='CRP'&&e.channel==='PAY Stat').source_rows[0],7);
 });
@@ -60,26 +60,28 @@ test('missing or different user identity is rejected',()=>{
  for(const bad of ['','other@gmail.com']){email=bad;assert.throws(()=>context.getDataset(),/Access denied/);}
  email='rmtaa0916@gmail.com';
 });
-test('unexpected actual tabs and non-synthetic rows rejected',()=>{
+test('only configured working-copy tabs accepted; status is informational',()=>{
  unexpectedTab=true;assert.throws(()=>context.getDataset(),/Unexpected/);unexpectedTab=false;
- rows[3][10]='ACTUAL';assert.throws(()=>context.getDataset(),/non-synthetic/);rows[3][10]='SYNTHETIC / DEMO';
+ const old=rows[3][10];rows[3][10]='COPIED SOURCE';
+ assert.equal(context.getDataset().quality.passed,true);
+ rows[3][10]=old;
 });
 const original=rows[3][7];
 const base={sheetRow:7,count:original+1,expectedCount:original,period:periods[0],test:'CRP'};
-test('guarded update writes only synthetic H7 and recalculates',()=>{
- assert.equal(context.updateDemoCount(base).success,true);
+test('guarded count update changes only working-copy H7 and recalculates',()=>{
+ assert.equal(context.updateCount(base).success,true);
  assert.equal(rows[3][7],original+1);assert.equal(rows[3][9],(original+1)*rows[3][8]);
  assert.equal(lock,false);assert.equal(flushCount,1);
 });
 test('stale updates and wrong row identities rejected',()=>{
- assert.throws(()=>context.updateDemoCount(base),/changed/);
- assert.throws(()=>context.updateDemoCount({...base,test:'WRONG',expectedCount:original+1}),/changed/);
- assert.throws(()=>context.updateDemoCount({...base,sheetRow:4}),/Invalid/);
- assert.throws(()=>context.updateDemoCount({...base,count:-1}),/Invalid/);
+ assert.throws(()=>context.updateCount(base),/changed/);
+ assert.throws(()=>context.updateCount({...base,test:'WRONG',expectedCount:original+1}),/changed/);
+ assert.throws(()=>context.updateCount({...base,sheetRow:4}),/Invalid/);
+ assert.throws(()=>context.updateCount({...base,count:-1}),/Invalid/);
  assert.equal(rows[3][7],original+1);
 });
 test('count restored after test',()=>{
- assert.equal(context.updateDemoCount({...base,count:original,expectedCount:original+1}).success,true);
+ assert.equal(context.updateCount({...base,count:original,expectedCount:original+1}).success,true);
  assert.equal(rows[3][7],original);
  assert.equal(context.getDataset().summary_stats.total_volume,expected);
 });
@@ -103,7 +105,7 @@ test('record edit changes inputs only and recomputes formula result',()=>{
  const vals={test:'CRP DEMO EDIT',patientGroup:'Employee',
    billing:'QFS',priority:'QFS',count:7,rate:123.45};
  const before=context.getDataset().summary_stats.reported_income;
- const answer=context.updateDemoRecord({...editBase,values:vals});
+ const answer=context.updateRecord({...editBase,values:vals});
  assert.equal(answer.success,true);
  assert.equal(answer.updatedRange,'DEMO - Weekly Census!D7:I7');
  assert.deepEqual(rows[3].slice(3,9),
@@ -116,7 +118,7 @@ test('record edit changes inputs only and recomputes formula result',()=>{
  assert.equal(lock,false);
 });
 test('stale edits are rejected and do not overwrite recent changes',()=>{
- assert.throws(()=>context.updateDemoRecord({
+ assert.throws(()=>context.updateRecord({
    ...editBase,values:{...expectedRecord,count:1}
  }),/changed/);
  assert.equal(rows[3][3],'CRP DEMO EDIT');
@@ -129,7 +131,7 @@ test('invalid combinations and numeric limits are rejected',()=>{
    {...e,count:-2},{...e,count:1.2},{...e,rate:1.234},
    {...e,rate:NaN},{...e,test:'=HYPERLINK("http://bad")'}
  ]){
-   assert.throws(()=>context.updateDemoRecord({...editBase,expected:e,values:v}),
+   assert.throws(()=>context.updateRecord({...editBase,expected:e,values:v}),
      /Invalid/);
  }
  assert.equal(rows[3][3],e.test);
@@ -138,7 +140,7 @@ test('collision with an existing period/category is rejected',()=>{
  const e={test:'CRP DEMO EDIT',patientGroup:'Employee',billing:'QFS',
    priority:'QFS',count:7,rate:123.45};
  const v={...expectedRecord,priority:'ROUTINE'};
- assert.throws(()=>context.updateDemoRecord({...editBase,expected:e,values:v}),
+ assert.throws(()=>context.updateRecord({...editBase,expected:e,values:v}),
    /already exists/);
  assert.equal(rows[3][3],e.test);
 });
@@ -146,7 +148,7 @@ test('missing amount formula blocks mutation',()=>{
  const e={test:'CRP DEMO EDIT',patientGroup:'Employee',billing:'QFS',
    priority:'QFS',count:7,rate:123.45};
  formulaBroken=true;
- assert.throws(()=>context.updateDemoRecord({...editBase,expected:e,values:expectedRecord}),
+ assert.throws(()=>context.updateRecord({...editBase,expected:e,values:expectedRecord}),
    /formula is missing/);
  formulaBroken=false;
  assert.equal(rows[3][3],e.test);
@@ -155,14 +157,14 @@ test('unauthorized users cannot change any source fields',()=>{
  email='other@gmail.com';
  const e={test:'CRP DEMO EDIT',patientGroup:'Employee',billing:'QFS',
    priority:'QFS',count:7,rate:123.45};
- assert.throws(()=>context.updateDemoRecord({...editBase,expected:e,values:expectedRecord}),
+ assert.throws(()=>context.updateRecord({...editBase,expected:e,values:expectedRecord}),
    /Access denied/);
  email='rmtaa0916@gmail.com';
 });
 test('record edit restores all original inputs and totals',()=>{
  const e={test:'CRP DEMO EDIT',patientGroup:'Employee',billing:'QFS',
    priority:'QFS',count:7,rate:123.45};
- assert.equal(context.updateDemoRecord({...editBase,expected:e,values:expectedRecord}).success,true);
+ assert.equal(context.updateRecord({...editBase,expected:e,values:expectedRecord}).success,true);
  assert.deepEqual(rows[3].slice(),sample);
  assert.equal(context.getDataset().summary_stats.total_volume,expected);
  assert.equal(lock,false);
