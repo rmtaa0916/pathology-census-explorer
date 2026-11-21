@@ -19,3 +19,5 @@ jobs:
           node-version: '20'
       - name: Check verified Google identity, authorization, and transactions
         run: node qr-auth-portal/tests/auth.test.cjs
+      - name: Check in-page QR camera interactions and fallback
+        run: node qr-auth-portal/tests/scanner.test.cjs
