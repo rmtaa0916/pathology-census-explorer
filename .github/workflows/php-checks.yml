@@ -21,6 +21,8 @@ jobs:
           find src public tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Run deterministic data tests
         run: php -d zend.assertions=1 -d assert.exception=1 tests/CensusDataTest.php
+      - name: Test selected and full-coverage formal reports
+        run: php -d zend.assertions=1 -d assert.exception=1 tests/ReportBuilderTest.php
       - name: Reject accidental sensitive files
         run: |
           set -eu
