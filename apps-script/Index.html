@@ -121,6 +121,31 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
 .report-sign-grid>div{font-size:10px;color:#314e62}.report-sign-grid strong{display:block;margin-bottom:22px;font-size:11px}.report-sign-line{border-bottom:1px solid #73818a;height:1px}.report-sign-grid small{display:block;font-size:9px;color:#647886;margin-top:7px}
 .report-appendix{break-before:page;page-break-before:always}
 @media(max-width:600px){.report-preview{padding:0}.report-paper{width:100%;min-height:0;padding:22% 7% 16%}.report-stationery{height:auto;aspect-ratio:210 / 297}.report-letterhead img{width:55px}.report-institution{font-size:11px}.report-department{font-size:10px}.report-metrics,.report-counts{grid-template-columns:repeat(2,1fr)}.report-toolbar{border-radius:0}}
+
+/* Formal reports use monochrome text, tables, borders and stationery. */
+#reportPreview .report-paper,#reportPreview .report-paper *:not(img){color:#000!important;text-shadow:none!important}
+#reportPreview .report-paper .report-stationery{filter:grayscale(100%) contrast(1.08)}
+#reportPreview .report-paper .report-meta,#reportPreview .report-paper h2{border-color:#777}
+#reportPreview .report-paper .report-notice{background:#f3f3f3;border-left:2px solid #555}
+#reportPreview .report-paper .report-metric{background:#fff;border-color:#aaa}
+#reportPreview .report-paper table th{background:#eee;border-color:#aaa}
+#reportPreview .report-paper table td{border-color:#ccc}
+#reportPreview .report-paper tbody tr:nth-child(even){background:#fff}
+#reportPreview .report-paper .report-sign-line{border-color:#000}
+.report-signatory-editor{width:100%;border:1px solid #dce5e8;border-radius:10px;background:#fff;padding:15px}
+.report-signatory-editor h3{font-size:13px;margin:0 0 5px}
+.report-signatory-editor>p{font-size:11px;color:#647781;margin:0 0 14px;line-height:1.5}
+.report-signatory-people{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.report-signatory-person{min-width:0;border:1px solid #dce5e8;border-radius:8px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.report-signatory-person legend{padding:0 5px;font-size:11px;font-weight:750;color:#294a61}
+.report-signatory-person label{font-size:11px;font-weight:650;display:flex;flex-direction:column;gap:5px;color:#395464}
+.report-signatory-person input,.report-signatory-person select{width:100%;min-width:0;font:inherit;font-size:12px;color:#203848;background:#fff;padding:9px 10px;border:1px solid #cdd9df;border-radius:6px}
+.report-signatory-hint{margin-top:12px;font-size:11px;color:#536977;line-height:1.45}
+.report-sign-grid .report-sign-caption{font-size:11px;font-weight:700;margin:0 0 42px}
+.report-sign-grid .report-sign-line{border-bottom:1px solid #000;height:1px}
+.report-sign-grid .report-signer-name{display:block;font-size:11px;font-weight:700;margin:9px 0 2px}
+.report-sign-grid .report-signer-position,.report-sign-grid .report-signer-date{font-size:10px;margin-top:3px}
+@media(max-width:650px){.report-signatory-people{grid-template-columns:1fr}}
 @page{size:A4 portrait;margin:40mm 15mm 28mm}
 @media print{
  html,body{background:white!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
@@ -159,6 +184,8 @@ const escapeHtml=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 let activePage='overview',chartMetric='volume',tableQuery='',tableSort='volume',tableSortDir='desc';
 let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null, drawerStarting=null, staleDashboard=false, lastCommittedEdit=null, undoInProgress=false;
 let reportPeriod='all',reportDetail=false,reportGenerating=false;
+let reportSecondRole='Noted by';
+let reportSignatories={prepared:{name:'',position:'',date:''},noted:{name:'',position:'',date:''}};
 const stagedEdits=new Map();
 let batchState='ready',batchNotice='';
 
@@ -753,7 +780,56 @@ function reportCountTable(heading,rows){
       <td class="numeric">${fmtInt(r.count)}</td><td class="numeric">${formalMoney(r.amount)}</td></tr>`).join('')}</tbody></table>
   </section>`;
 }
-function reportDocument(model,withAppendix=false){
+
+const reportSecondRoleOptions=['Noted by','Reviewed by','Approved by'];
+function reportValidSignatureDate(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+  const date=new Date(value+'T12:00:00+08:00');
+  return !Number.isNaN(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
+function reportSignatoriesReady(details=reportSignatories){
+  return ['prepared','noted'].every(role=>{
+    const person=details[role];
+    return person&&['name','position'].every(field=>
+      typeof person[field]==='string'&&person[field].trim().length>0)
+      &&reportValidSignatureDate(person.date);
+  });
+}
+function reportSignatoryFields(role){
+  const info=reportSignatories[role];
+  return ['name','position','date'].map(field=>{
+    const label={name:'Full name',position:'Position / designation',date:'Date'}[field];
+    return `<label for="report-${role}-${field}">${label}
+      <input id="report-${role}-${field}" data-report-signatory="${role}" data-report-field="${field}"
+        type="${field==='date'?'date':'text'}" required maxlength="120" value="${escapeHtml(info[field])}"></label>`;
+  }).join('');
+}
+function reportUpdateSignatoryControls(){
+  const ready=reportSignatoriesReady();
+  const button=document.querySelector('[data-report-generate]');
+  if(button)button.disabled=!ready||stagedEdits.size>0||staleDashboard||batchState!=='ready'||SOURCE?.needsReview;
+  const hint=document.getElementById('reportSignatoryHint');
+  if(hint)hint.textContent=ready
+    ?'Entered details will appear on the report. The signature lines are for signing after printing.'
+    :'Enter the name, position and date for both signatories before generating the report.';
+}
+function reportSignatureDateLabel(value){
+  return new Date(value+'T12:00:00+08:00').toLocaleDateString('en-PH',{
+    year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Manila'});
+}
+function reportSignatureBlock(person,label){
+  return `<div class="report-signatory">
+    <div class="report-sign-caption">${escapeHtml(label)}:</div>
+    <div class="report-sign-line" aria-label="Signature line"></div>
+    <strong class="report-signer-name">${escapeHtml(person.name.trim())}</strong>
+    <div class="report-signer-position">${escapeHtml(person.position.trim())}</div>
+    <div class="report-signer-date">Date: ${escapeHtml(reportSignatureDateLabel(person.date))}</div>
+  </div>`;
+}
+
+function reportDocument(model,withAppendix=false,signatories=reportSignatories,secondRole=reportSecondRole){
+  if(!reportSignatoriesReady(signatories))throw Error('Complete both signatories before generating the report.');
+  if(!reportSecondRoleOptions.includes(secondRole))throw Error('Invalid second signatory label.');
   const reportDate=new Date().toLocaleDateString('en-PH',{dateStyle:'long',timeZone:'Asia/Manila'});
   const num=model.full?7:6;
   const metric=(label,val)=>`<div class="report-metric"><span>${label}</span><strong>${val}</strong></div>`;
@@ -789,8 +865,10 @@ function reportDocument(model,withAppendix=false){
      ${reportCountTable(model.full?'6. Examination-level census':'5. Examination-level census',model.examinations)}
      <section class="report-signatures"><h2>${num}. Signatories</h2>
        <p class="report-footnote">Report based on records at the time shown above. Recheck after subsequent edits.</p>
-       <div class="report-sign-grid"><div><strong>Prepared by:</strong><div class="report-sign-line"></div><small>Signature over printed name · Position · Date</small></div>
-       <div><strong>Noted by:</strong><div class="report-sign-line"></div><small>Signature over printed name · Position · Date</small></div></div>
+       <div class="report-sign-grid">
+         ${reportSignatureBlock(signatories.prepared,'Prepared by')}
+         ${reportSignatureBlock(signatories.noted,secondRole)}
+       </div>
      </section>
      ${withAppendix?`<section class="report-appendix">
        <h2>Appendix A. Examination × group × billing × priority</h2>
@@ -812,7 +890,7 @@ function reports(){
   return `${pageIntro('Reporting / print-ready documentation','A4 formal census reports',
     'Generate an institutional-style report from one period or the complete December 2023 census.')}
     <section class="card report-setup">
-      <div class="record-note"><b>Source:</b> The connected Google Sheets working copy. Report generation performs a fresh read before creating the preview. Prepared by / Noted by signature fields are left blank.</div>
+      <div class="record-note"><b>Source:</b> The connected Google Sheets working copy. Report generation performs a fresh read before creating the preview. Enter signatory details below; they will appear on the printed report.</div>
       ${pending?`<div class="report-uncommitted" role="alert">
         Unsaved or unconfirmed edits are present. Save all and reconcile before generating a new report.
       </div>`:''}
@@ -820,10 +898,26 @@ function reports(){
         <select class="select" id="reportPeriod">${options.map(o=>`<option value="${o.id}" ${reportPeriod===o.id?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select></label>
         <label class="report-checkbox"><input type="checkbox" id="reportDetail" ${reportDetail?'checked':''}>
           Include full category-detail appendix (additional A4 pages)</label>
+        <div class="report-signatory-editor">
+          <h3>Report signatories</h3>
+          <p>Enter names, positions and dates to appear on the report. These entries do not change Google Sheets.</p>
+          <div class="report-signatory-people">
+            <fieldset class="report-signatory-person"><legend>Prepared by</legend>
+              ${reportSignatoryFields('prepared')}</fieldset>
+            <fieldset class="report-signatory-person"><legend>Second signatory</legend>
+              <label for="reportSecondRole">Report label<select id="reportSecondRole">
+                ${reportSecondRoleOptions.map(role=>`<option value="${role}" ${reportSecondRole===role?'selected':''}>${role}</option>`).join('')}
+              </select></label>
+              ${reportSignatoryFields('noted')}</fieldset>
+          </div>
+          <p class="report-signatory-hint" id="reportSignatoryHint">
+            ${reportSignatoriesReady()?'Entered details will appear on the report. The signature lines are for signing after printing.':'Enter the name, position and date for both signatories before generating the report.'}
+          </p>
+        </div>
         <div class="report-counts"><div><span>Source rows</span><strong>${fmtInt(model.rows)}</strong></div>
           <div><span>Examinations</span><strong>${fmtInt(model.total.count)}</strong></div>
           <div><span>Calculated amount</span><strong>${formalMoney(model.total.amount)}</strong></div></div>
-        <button type="button" class="report-generate" data-report-generate ${pending||SOURCE?.needsReview?'disabled':''}>
+        <button type="button" class="report-generate" data-report-generate ${pending||SOURCE?.needsReview||!reportSignatoriesReady()?'disabled':''}>
           ${reportGenerating?'Loading source…':'Generate A4 report'}</button>
       </div>
       <p class="fine">The report opens as a print-ready preview. Select Print / Save PDF and choose Save as PDF on your device. Previewed totals are not updated until a new report is generated.</p>
@@ -831,8 +925,11 @@ function reports(){
 }
 async function generateA4Report(){
   if(reportGenerating||stagedEdits.size||staleDashboard||batchState!=='ready'||SOURCE?.needsReview)return;
+  if(!reportSignatoriesReady()){alert('Enter the name, position and date for both signatories.');return;}
   reportGenerating=true;
   const selected=reportPeriod,detail=reportDetail;
+  const signatories={prepared:{...reportSignatories.prepared},noted:{...reportSignatories.noted}};
+  const secondRole=reportSecondRole;
   try{
     const fresh=await requestFreshDataset();
     applyFreshDataset(fresh);
@@ -840,7 +937,7 @@ async function generateA4Report(){
     if(QUALITY?.passed===false)throw Error('Data quality checks reported discrepancies. Verify the Sheet before producing a formal report.');
     const model=reportAggregate(RECORDS,selected);
     const preview=document.getElementById('reportPreview');
-    preview.innerHTML=reportDocument(model,detail);
+    preview.innerHTML=reportDocument(model,detail,signatories,secondRole);
     preview.hidden=false;
     preview.scrollTop=0;
     document.body.classList.add('report-open');
@@ -875,9 +972,30 @@ document.getElementById('content').addEventListener('click',e=>{
   }
   const reconcile=e.target.closest('[data-batch-reconcile]');if(reconcile){reconcileStagedEdits();return;}
   const health=e.target.closest('[data-check-source]');if(health){if(health.disabled)return;health.disabled=true;health.textContent='Checking…';google.script.run.withSuccessHandler(status=>{SOURCE=status;DATA.sourceStatus=status;render();}).withFailureHandler(err=>{health.disabled=false;health.textContent='Retry check';alert('Unable to check source: '+String(err?.message||err));}).getSourceStatus();return;}const undo=e.target.closest('[data-undo-last]');if(undo){undoLastEdit();return;}const editInterval=e.target.closest('[data-edit-interval]');if(editInterval){recordPeriod=INTERVALS[selectedInterval].label;recordGroup=periodSection==='operational'?'Employee':periodSection==='inpatient'?'Inpatient':periodSection==='outpatient'?'Outpatient':'all';recordPage=0;showPage('records');return;}const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const dir=e.target.closest('[data-sort-dir]');if(dir){tableSortDir=tableSortDir==='desc'?'asc':'desc';render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
-document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='recordSearch'){const v=e.target.value,pos=e.target.selectionStart;recordQuery=v;recordPage=0;render();const el=document.getElementById('recordSearch');if(el){el.focus();el.setSelectionRange(pos,pos);}return;}if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;const count=document.getElementById('examCount');if(count)count.textContent=filteredExams().length+' examinations';document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
+document.getElementById('content').addEventListener('input',e=>{
+  const input=e.target.closest('[data-report-signatory]');
+  if(input){
+    const role=input.dataset.reportSignatory,field=input.dataset.reportField;
+    if(['prepared','noted'].includes(role)&&['name','position','date'].includes(field)){
+      reportSignatories[role][field]=input.value;reportUpdateSignatoryControls();
+    }
+    return;
+  }
+  if(e.target.id==='recordSearch'){const v=e.target.value,pos=e.target.selectionStart;recordQuery=v;recordPage=0;render();const el=document.getElementById('recordSearch');if(el){el.focus();el.setSelectionRange(pos,pos);}return;}if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;const count=document.getElementById('examCount');if(count)count.textContent=filteredExams().length+' examinations';document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
 );
-document.getElementById('content').addEventListener('change',e=>{if(e.target.id==='reportPeriod'){reportPeriod=e.target.value;render();return;}if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render();}else if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();}else if(e.target.id==='sortExams'){tableSort=e.target.value;render()}});
+document.getElementById('content').addEventListener('change',e=>{
+  if(e.target.id==='reportSecondRole'){
+    if(reportSecondRoleOptions.includes(e.target.value))reportSecondRole=e.target.value;
+    render();return;
+  }
+  if(e.target.matches('[data-report-signatory]')){
+    const role=e.target.dataset.reportSignatory,field=e.target.dataset.reportField;
+    if(['prepared','noted'].includes(role)&&['name','position','date'].includes(field)){
+      reportSignatories[role][field]=e.target.value;reportUpdateSignatoryControls();
+    }
+    return;
+  }
+  if(e.target.id==='reportPeriod'){reportPeriod=e.target.value;render();return;}if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render();}else if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();}else if(e.target.id==='sortExams'){tableSort=e.target.value;render()}});
 document.querySelector('[data-open-records]').addEventListener('click',()=>showPage('records'));
 document.querySelector('[data-open-reports]').addEventListener('click',()=>showPage('reports'));
 render();
