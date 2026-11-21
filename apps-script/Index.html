@@ -142,7 +142,7 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
    in the DOM exclusively for native, flowing print pagination. */
 @media screen {
  #reportPreview #reportPaper{display:none!important}
- #reportPreview .report-sheets{display:flex;flex-direction:column;align-items:center;gap:18px;margin:0 auto 18px}
+ #reportPreview .report-sheets{display:flex;flex-direction:column;align-items:center;gap:18px;width:max-content;margin:0 auto 18px}
  #reportPreview .report-paper.report-screen-sheet{
    display:block!important;box-sizing:border-box;flex:none;position:relative;isolation:isolate;
    width:210mm!important;max-width:none!important;height:297mm!important;min-height:297mm!important;
@@ -237,6 +237,8 @@ let activePage='overview',chartMetric='volume',tableQuery='',tableSort='volume',
 let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null, drawerStarting=null, staleDashboard=false, lastCommittedEdit=null, undoInProgress=false;
 let reportPeriod='all',reportDetail=false,reportGenerating=false;
 let reportSecondRole='Noted by';
+let reportError='';
+let reportReturnFocus=null;
 let reportSignatories={prepared:{name:'',position:'',date:''},noted:{name:'',position:'',date:''}};
 const stagedEdits=new Map();
 let batchState='ready',batchNotice='';
@@ -474,7 +476,12 @@ async function undoLastEdit(){
   }finally{undoInProgress=false;}
 }
 document.getElementById('backdrop').addEventListener('click',closeDrawer);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const preview=document.getElementById('reportPreview');
+  if(preview&&!preview.hidden)closeA4Report();
+  else if(document.getElementById('drawer').classList.contains('show'))closeDrawer();
+});
 window.addEventListener('beforeunload',e=>{
   const form=document.getElementById('recordEditForm');
   if(drawerSaving||undoInProgress||batchState!=='ready'||stagedEdits.size>0||(form&&drawerStarting&&!drawerCommitted&&formHasChanges(form,drawerStarting))){
@@ -1180,6 +1187,11 @@ function paginateA4ScreenPreview(preview){
   count.className='report-page-counter';
   count.textContent=pageCount+' A4 page'+(pageCount===1?'':'s')+' · Original-color LCP letterhead repeats on every page';
   sheets.parentNode.insertBefore(count,sheets);
+  // Scale the visual preview to fit an Android phone/tablet viewport. The
+  // printable source document remains full-size and is not affected.
+  const viewportWidth=Math.max(320,preview.clientWidth-28);
+  const previewScale=Math.min(1,viewportWidth/794);
+  if(previewScale<1)sheets.style.zoom=String(previewScale);
   return pageCount;
 }
 
@@ -1192,6 +1204,7 @@ function reports(){
     'Generate an institutional-style report from one period or the complete December 2023 census.')}
     <section class="card report-setup">
       <div class="record-note"><b>Source:</b> The connected Google Sheets working copy. Report generation performs a fresh read before creating the preview. Enter signatory details below; they will appear on the printed report.</div>
+      ${reportError?`<div class="report-uncommitted" role="alert">${escapeHtml(reportError)}</div>`:''}
       ${pending?`<div class="report-uncommitted" role="alert">
         Unsaved or unconfirmed edits are present. Save all and reconcile before generating a new report.
       </div>`:''}
@@ -1228,6 +1241,8 @@ async function generateA4Report(){
   if(reportGenerating||stagedEdits.size||staleDashboard||batchState!=='ready'||SOURCE?.needsReview)return;
   if(!reportSignatoriesReady()){alert('Enter the name, position and date for both signatories.');return;}
   reportGenerating=true;
+  reportError='';
+  reportReturnFocus=document.activeElement;
   const selected=reportPeriod,detail=reportDetail;
   const signatories={prepared:{...reportSignatories.prepared},noted:{...reportSignatories.noted}};
   const secondRole=reportSecondRole;
@@ -1249,14 +1264,19 @@ async function generateA4Report(){
     reportGenerating=false;
     render();
   }catch(error){
-    reportGenerating=false;render();
-    alert('Unable to generate the report: '+String(error?.message||error));
+    closeA4Report();
+    reportGenerating=false;
+    reportError='Unable to generate the A4 report: '+String(error?.message||error);
+    render();
   }
 }
 function closeA4Report(){
   const preview=document.getElementById('reportPreview');
   preview.hidden=true;preview.innerHTML='';
   document.body.classList.remove('report-open');
+  if(reportReturnFocus&&reportReturnFocus.isConnected&&typeof reportReturnFocus.focus==='function')
+    reportReturnFocus.focus({preventScroll:true});
+  reportReturnFocus=null;
 }
 
 function render(){
