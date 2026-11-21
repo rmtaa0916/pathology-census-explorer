@@ -192,13 +192,33 @@ function getDataset() {
   const formulas = sheet.getRange(CENSUS.firstDataRow, 10,
     CENSUS.lastDataRow - CENSUS.firstDataRow + 1, 1).getFormulas();
   data.quality = auditCopyRows_(rows, formulas, data);
+  data.sourceStatus = getSourceStatus();
   return data;
 }
 
 function doGet() {
   requireOwner_();
+  let data;
+  try {
+    data = getDataset();
+  } catch (error) {
+    // Do not render misleading zero totals or allow editing when source mapping
+    // cannot be read safely. Explain how to investigate the changed Sheet.
+    const message = String(error && error.message || error)
+      .replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return HtmlService.createHtmlOutput('<!doctype html><html><head><meta name="viewport" '+
+      'content="width=device-width,initial-scale=1"></head><body style="font:16px system-ui;'+
+      'max-width:700px;margin:7vh auto;padding:24px;color:#183c3d"><h2>Source review required</h2>'+
+      '<p>The connected Google Sheets layout cannot be safely read by this application.</p>'+
+      '<p><strong>'+message+'</strong></p>'+
+      '<p>Editing is paused. Review new columns, rows, tabs and formulas, then update the app '+
+      'before resuming. The original workbook is unaffected.</p>'+
+      '<p><a href="https://docs.google.com/spreadsheets/d/'+CENSUS.spreadsheetId+
+      '/edit" target="_blank" rel="noopener">Inspect working-copy spreadsheet</a></p>'+
+      '</body></html>').setTitle('Pathology Census Explorer — Source review');
+  }
   const template = HtmlService.createTemplateFromFile('Index');
-  template.initialDataJson = JSON.stringify(getDataset())
+  template.initialDataJson = JSON.stringify(data)
     .replace(/</g, '\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
   return template.evaluate().setTitle('Pathology Census Explorer — Working Copy')
     .addMetaTag('viewport','width=device-width, initial-scale=1.0');
@@ -220,6 +240,8 @@ function updateCount(payload) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
+    // Fail closed if the source layout or formulas changed since app review.
+    assertSourceSafeToEdit_();
     const sheet = getCopySheet_();
     const current = sheet.getRange(row,1,1,11).getValues()[0];
     if (current[0] !== payload.period || current[3] !== payload.test ||
@@ -282,6 +304,8 @@ function updateRecord(payload) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
+    // Fail closed if the source layout or formulas changed since app review.
+    assertSourceSafeToEdit_();
     const sheet = getCopySheet_();
     const range = sheet.getRange(payload.sheetRow, 1, 1, 11);
     const old = range.getValues()[0];
