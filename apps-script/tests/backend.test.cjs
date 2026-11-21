@@ -37,6 +37,8 @@ const sheet={
  }}
 };
 const context={
+ getSourceStatus:()=>({monitoringEnabled:false,needsReview:false,issues:[]}),
+ assertSourceSafeToEdit_:()=>true,
  Session:{getActiveUser:()=>({getEmail:()=>email})},
  SpreadsheetApp:{openById:id=>{
    assert.equal(id,'1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE');
