@@ -1048,10 +1048,8 @@ function reportPeriodDisplay(model){
 function reportSummaryTable(model,withAmounts=false){
   const rows=[
     ['Total examinations',model.total.count],
-    ['Inpatient and outpatient examinations',model.total.patient],
-    ['Employee / QFS examinations',model.total.qfs],
-    ['STAT examinations',model.total.stat],
-    ['Routine examinations',model.total.routine]
+    ['Patient examinations (inpatient and outpatient)',model.total.patient],
+    ['Employee examinations (QFS)',model.total.qfs]
   ];
   return `<section class="report-section report-summary">
     <h2>Summary of examinations</h2>
@@ -1197,6 +1195,9 @@ function reportDocument(model,withAppendix=false,signatories=reportSignatories,s
              <td>${escapeHtml(r.group)}</td><td>${escapeHtml(r.billing)}</td>
              <td>${escapeHtml(r.priority)}</td><td class="numeric">${fmtInt(r.count)}</td>
              ${withAmounts?`<td class="numeric">${formalMoney(r.amount)}</td>`:''}</tr>`).join('')}
+             <tr class="report-total-row"><td><b>Total</b></td><td></td><td></td><td></td>
+               <td class="numeric"><b>${fmtInt(model.total.count)}</b></td>
+               ${withAmounts?`<td class="numeric"><b>${formalMoney(model.total.amount)}</b></td>`:''}</tr>
            </tbody></table></section>`:''}
        <section class="report-signatures" aria-label="Report signatories">
          <div class="report-sign-grid">
