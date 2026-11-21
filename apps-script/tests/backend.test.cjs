@@ -194,3 +194,24 @@ test('quality check flags duplicate identities within an interval',()=>{
  rows[4]=prior;
  assert.equal(context.getDataset().quality.passed,true);
 });
+
+test('copied rows may have a different or blank source status without losing editability',()=>{
+  const originalStatus=rows[3][10];
+  const originalCount=rows[3][7];
+  const expectedValues={test:rows[3][3],patientGroup:rows[3][4],billing:rows[3][5],
+    priority:rows[3][6],count:originalCount,rate:rows[3][8]};
+  for(const sourceStatus of ['COPIED SOURCE','']){
+    rows[3][10]=sourceStatus;
+    const changed={...expectedValues,count:originalCount+1};
+    assert.equal(context.updateRecord({sheetRow:7,period:periods[0],
+      expected:expectedValues,values:changed}).success,true);
+    assert.equal(rows[3][10],sourceStatus,'Source metadata must remain unchanged');
+    assert.equal(rows[3][7],originalCount+1);
+    assert.equal(context.updateRecord({sheetRow:7,period:periods[0],
+      expected:changed,values:expectedValues}).success,true);
+    assert.equal(rows[3][10],sourceStatus);
+    assert.equal(context.getDataset().quality.passed,true);
+  }
+  rows[3][10]=originalStatus;
+  assert.equal(rows[3][7],originalCount);
+});
