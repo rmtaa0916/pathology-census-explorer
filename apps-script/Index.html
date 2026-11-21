@@ -48,7 +48,7 @@ let S=DATA.summary_stats, EXAMS=DATA.exams, ENTRIES=DATA.entries, RECORDS=DATA.r
 const fmtInt=n=>Number(n).toLocaleString('en-PH'),fmtMoney=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:0,maximumFractionDigits:2});
 const escapeHtml=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let activePage='overview',chartMetric='volume',tableQuery='',tableSort='volume',tableSortDir='desc';
-let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null, staleDashboard=false;
+let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null, staleDashboard=false, lastCommittedEdit=null, undoInProgress=false;
 function createBreakouts(){return [
  {label:'Inpatient · CHA',sec:'inpatient',prefix:'CHA',c:'#087f74'},
  {label:'Inpatient · PAY',sec:'inpatient',prefix:'PAY',c:'#49a89f'},
@@ -86,7 +86,7 @@ ${!report?'<div class="record-note">Validation is unavailable. No pass status ca
 ${checks.map(check=>`<section class="card quality-card"><div class="severity ${check.passed?'low':'med'}"></div><div><b>${escapeHtml(check.title)} — ${check.passed?'Pass':check.discrepancies+' issue(s)'}</b><p>${escapeHtml(check.explanation)}</p></div></section>`).join('')}
 <p class="fine">Most recent source verification: ${report?.checkedAt?escapeHtml(new Date(report.checkedAt).toLocaleString('en-PH')):'Not available'}. These checks do not replace laboratory data quality assurance.</p>
 <div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`}
-function showExam(name){if(drawerSaving)return;drawerEpoch++;drawerOriginal=null;drawerCommitted=false;const t=EXAMS.find(x=>x.test===name);if(!t)return;const es=ENTRIES.filter(e=>e.test===name);document.getElementById('drawer').innerHTML=`<button class="close" id="closeDrawer">Close ×</button><p class="eyebrow">Synthetic examination detail</p><h2 style="font-size:25px;letter-spacing:-.7px;margin:0 0 11px">${escapeHtml(name)}</h2><p class="fine">December 2023 demo · test counts, not unique patients</p><div class="mini-grid" style="margin:18px 0">${[['All activity',t.volume],['Patient-section',t.patient_volume],['STAT',t.stat_volume],['Illustrative amount',fmtMoney(t.reported_income)]].map(k=>`<div class="mini"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div><h3 style="font-size:13px;margin:21px 0 10px">Demo category detail</h3><div class="table-wrap"><table class="t"><thead><tr><th>Section · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead><tbody>${es.map(e=>`<tr><td>${e.section==='inpatient'?'IP':e.section==='outpatient'?'OP':'Other'} · ${escapeHtml(e.channel)}</td><td class="right">${e.volume}</td><td class="right">${fmtMoney(e.reported_income)}</td>${WRITES_ENABLED?`<td><button class="sourcebtn editdemo" data-edit-row="${e.source_rows[selectedInterval]||''}" data-period="${INTERVALS[selectedInterval].label}" data-test="${escapeHtml(e.test)}" data-old="${e.weeks[selectedInterval]}">Edit inputs</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4">No demo examinations</td></tr>'}</tbody></table></div><p class="fine" style="margin-top:18px">Synthetic demo data only. Edit counts, rates and category inputs for the selected interval; derived amounts update in Google Sheets.</p>`;
+function showExam(name){if(drawerSaving||undoInProgress)return;drawerEpoch++;drawerOriginal=null;drawerCommitted=false;const t=EXAMS.find(x=>x.test===name);if(!t)return;const es=ENTRIES.filter(e=>e.test===name);document.getElementById('drawer').innerHTML=`<button class="close" id="closeDrawer">Close ×</button><p class="eyebrow">Synthetic examination detail</p><h2 style="font-size:25px;letter-spacing:-.7px;margin:0 0 11px">${escapeHtml(name)}</h2><p class="fine">December 2023 demo · test counts, not unique patients</p><div class="mini-grid" style="margin:18px 0">${[['All activity',t.volume],['Patient-section',t.patient_volume],['STAT',t.stat_volume],['Illustrative amount',fmtMoney(t.reported_income)]].map(k=>`<div class="mini"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div><h3 style="font-size:13px;margin:21px 0 10px">Demo category detail</h3><div class="table-wrap"><table class="t"><thead><tr><th>Section · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead><tbody>${es.map(e=>`<tr><td>${e.section==='inpatient'?'IP':e.section==='outpatient'?'OP':'Other'} · ${escapeHtml(e.channel)}</td><td class="right">${e.volume}</td><td class="right">${fmtMoney(e.reported_income)}</td>${WRITES_ENABLED?`<td><button class="sourcebtn editdemo" data-edit-row="${e.source_rows[selectedInterval]||''}" data-period="${INTERVALS[selectedInterval].label}" data-test="${escapeHtml(e.test)}" data-old="${e.weeks[selectedInterval]}">Edit inputs</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4">No demo examinations</td></tr>'}</tbody></table></div><p class="fine" style="margin-top:18px">Synthetic demo data only. Edit counts, rates and category inputs for the selected interval; derived amounts update in Google Sheets.</p>`;
 document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').classList.add('show');document.getElementById('closeDrawer').onclick=closeDrawer;
 if(WRITES_ENABLED)document.querySelectorAll('.editdemo').forEach(b=>b.onclick=()=>{if(b.dataset.editRow)openRecordEditor(Number(b.dataset.editRow));});
 }
@@ -128,15 +128,39 @@ function requestFreshDataset(){
   return new Promise((resolve,reject)=>google.script.run
     .withSuccessHandler(resolve).withFailureHandler(reject).getDataset());
 }
-function displaySyncNotice(message){
+function displaySyncNotice(message,offerUndo=true){
+  const undo=offerUndo&&lastCommittedEdit
+    ? '<button type="button" class="sourcebtn" data-undo-last style="margin-left:12px">Undo last edit</button>':'';
   document.getElementById('content').insertAdjacentHTML('afterbegin',
-    '<div class="record-note" role="status">'+escapeHtml(message)+'</div>');
+    '<div class="record-note" role="status">'+escapeHtml(message)+undo+'</div>');
+}
+async function undoLastEdit(){
+  if(!lastCommittedEdit||undoInProgress||drawerSaving)return;
+  if(!confirm('Restore the previous values for this synthetic source record?'))return;
+  const saved=lastCommittedEdit;lastCommittedEdit=null;undoInProgress=true;
+  const button=document.querySelector('[data-undo-last]');
+  if(button){button.disabled=true;button.textContent='Restoring…';}
+  let restored=false;
+  try{
+    await new Promise((resolve,reject)=>google.script.run
+      .withSuccessHandler(resolve).withFailureHandler(reject).updateDemoRecord(saved));
+    restored=true;
+    const fresh=await requestFreshDataset();
+    applyFreshDataset(fresh);
+    render();
+    displaySyncNotice('Previous source values restored and dashboard recalculated.',false);
+  }catch(error){
+    staleDashboard=true;render();
+    displaySyncNotice(restored
+      ? 'Previous source values restored, but the dashboard refresh failed. Refresh data before editing.'
+      : 'Unable to confirm the Undo request. Refresh data and inspect the row before attempting another edit.',false);
+  }finally{undoInProgress=false;}
 }
 document.getElementById('backdrop').addEventListener('click',closeDrawer);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 window.addEventListener('beforeunload',e=>{
   const form=document.getElementById('recordEditForm');
-  if(drawerSaving||(form&&drawerOriginal&&!drawerCommitted&&formHasChanges(form,drawerOriginal))){
+  if(drawerSaving||undoInProgress||(form&&drawerOriginal&&!drawerCommitted&&formHasChanges(form,drawerOriginal))){
     e.preventDefault();e.returnValue='';
   }
 });
@@ -221,7 +245,7 @@ function records(){
     </div>`;
 }
 function openRecordEditor(sheetRow){
-  if(drawerSaving)return;
+  if(drawerSaving||undoInProgress)return;
   const record=RECORDS.find(r=>r.sheetRow===sheetRow);
   if(!record){alert('Source record is unavailable; refresh the dashboard.');return;}
   const drawer=document.getElementById('drawer');
@@ -321,6 +345,7 @@ function openRecordEditor(sheetRow){
       const matches=values=>current && fields.every(f=>current[f]===values[f]);
       const values=recordFormValues(form);
       const applied=matches(values), unchanged=matches(drawerOriginal);
+      if(applied)lastCommittedEdit={sheetRow:record.sheetRow,period:record.period,expected:values,values:{...drawerOriginal}};
       applyFreshDataset(fresh);drawerSaving=false;
       closeDrawer(true);render();
       displaySyncNotice(applied
@@ -347,7 +372,7 @@ function openRecordEditor(sheetRow){
       note.textContent='Enter a valid examination name, whole-number count, and rate with up to two decimals.';
       return;
     }
-    drawerSaving=true;saveButton.disabled=true;
+    drawerSaving=true;saveButton.disabled=true;lastCommittedEdit=null;
     lockInputs();note.textContent='Saving to Google Sheets…';
     try{
       await new Promise((resolve,reject)=>google.script.run
@@ -364,6 +389,7 @@ function openRecordEditor(sheetRow){
     }
     if(thisEditor!==drawerEpoch)return;
     drawerCommitted=true;
+    lastCommittedEdit={sheetRow:record.sheetRow,period:record.period,expected:values,values:{...drawerOriginal}};
     await refreshAfterCommit();
   });
 }
@@ -372,7 +398,7 @@ function render(){
   const warning=staleDashboard?'<div class="record-note" role="alert">Google Sheets may contain changes not yet reflected here. Use Refresh data before making another edit.</div>':'';
   document.getElementById('content').innerHTML=warning+({overview,periods,examinations,breakdown,records,quality})[activePage]();
 }
-document.getElementById('content').addEventListener('click',e=>{const editInterval=e.target.closest('[data-edit-interval]');if(editInterval){recordPeriod=INTERVALS[selectedInterval].label;recordGroup=periodSection==='operational'?'Employee':periodSection==='inpatient'?'Inpatient':periodSection==='outpatient'?'Outpatient':'all';recordPage=0;showPage('records');return;}const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const dir=e.target.closest('[data-sort-dir]');if(dir){tableSortDir=tableSortDir==='desc'?'asc':'desc';render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
+document.getElementById('content').addEventListener('click',e=>{const undo=e.target.closest('[data-undo-last]');if(undo){undoLastEdit();return;}const editInterval=e.target.closest('[data-edit-interval]');if(editInterval){recordPeriod=INTERVALS[selectedInterval].label;recordGroup=periodSection==='operational'?'Employee':periodSection==='inpatient'?'Inpatient':periodSection==='outpatient'?'Outpatient':'all';recordPage=0;showPage('records');return;}const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const dir=e.target.closest('[data-sort-dir]');if(dir){tableSortDir=tableSortDir==='desc'?'asc':'desc';render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
 document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='recordSearch'){const v=e.target.value,pos=e.target.selectionStart;recordQuery=v;recordPage=0;render();const el=document.getElementById('recordSearch');if(el){el.focus();el.setSelectionRange(pos,pos);}return;}if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;const count=document.getElementById('examCount');if(count)count.textContent=filteredExams().length+' examinations';document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
 );
 document.getElementById('content').addEventListener('change',e=>{if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render();}else if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();}else if(e.target.id==='sortExams'){tableSort=e.target.value;render()}});
