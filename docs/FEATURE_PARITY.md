@@ -15,7 +15,7 @@ The project has **two implementations** of the same census editing/reporting exp
 | Calculated amounts in census | Optional, off by default | Same |
 | Institutional letterhead | Original full-color artwork every page | Same |
 | PDF output | Browser Print → Save as PDF | Browser Print → Save as PDF |
-| Source-change monitoring | Not yet ported as a PHP cron/email subsystem | \`apps-script/SchemaMonitor.gs\` (change trigger + hourly scan) |
+| Source-change monitoring | `src/SourceMonitor.php` + `bin/check-source.php` (opt-in CLI polling and email; host cron required) | `apps-script/SchemaMonitor.gs` (on-change trigger + hourly scan) |
 | Local preview fixture | \`CensusData::mockRows()\` when \`APP_MODE\` is not \`live\` | Test fixture is in Node test suite; app itself reads the connected copy |
 
 ## Report parity and data contract
@@ -36,7 +36,7 @@ The PHP data model is `ReportBuilder::build($data, $periodId, $appendix)`; Apps 
 ## Known implementation differences
 
 - PHP uses independent HTTPS hosting, Basic authentication with protected server-side credentials, and an atomic Google Sheets batch update. Apps Script uses Google identity checks and Apps Script services.
-- PHP does **not** yet implement the Apps Script **hourly/on-change schema monitoring and email alerts**. It performs local data-consistency checks and enforces row, category and formula protections at batch-save time. These are not equivalent to the Apps Script monitor.
+- PHP implements equivalent **read-only source structure/formula comparisons**, private baselines, optional deduplicated mail and write blocking when the monitor is enabled, but **does not automatically install Apps Script-style on-change triggers**. Scheduling and email delivery require a separately configured private PHP host, cron and mail transport. See [PHP source-monitor instructions](PHP_SOURCE_MONITOR.md).
 - PHP uses a separate authenticated `report.php` route, while Apps Script opens its report within the current app. Neither project is automatically deployed by changes to the other.
 
 ## Multi-edit workflow

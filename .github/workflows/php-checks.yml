@@ -23,6 +23,8 @@ jobs:
         run: php -d zend.assertions=1 -d assert.exception=1 tests/CensusDataTest.php
       - name: Test selected and full-coverage formal reports
         run: php -d zend.assertions=1 -d assert.exception=1 tests/ReportBuilderTest.php
+      - name: Test source schema and formula monitoring
+        run: php -d zend.assertions=1 -d assert.exception=1 tests/SourceMonitorTest.php
       - name: Test atomic PHP batch-edit planner and conflict checks
         run: php -d zend.assertions=1 -d assert.exception=1 tests/CensusBatchPlannerTest.php
       - name: Validate PHP-rendered browser UI, batch staging and printable reports
