@@ -339,3 +339,142 @@ function updateRecord(payload) {
     lock.releaseLock();
   }
 }
+
+
+/**
+ * One client request for up to 100 staged source-record edits.
+ * All checks run before the first write. Google Sheets does not offer a
+ * transaction across non-adjacent ranges, so failed writes are rolled back
+ * on a best-effort basis and callers must reconcile uncertain outcomes.
+ * Only D:I are written; A:C, J formulas and K metadata are untouched.
+ */
+function updateRecordsBatch(payload) {
+  requireOwner_();
+  const changes = payload && payload.changes;
+  if (!Array.isArray(changes) || changes.length < 1 || changes.length > 100) {
+    throw new Error('Select between 1 and 100 records to save.');
+  }
+  const fields = ['test','patientGroup','billing','priority','count','rate'];
+  const validate = value => {
+    if (!value || typeof value !== 'object' ||
+        !fields.every(f => Object.prototype.hasOwnProperty.call(value,f))) {
+      throw new Error('Incomplete batch record.');
+    }
+    const v = {};
+    fields.forEach(f => {v[f] = value[f];});
+    if (typeof v.test !== 'string' ||
+        !/^[A-Za-z0-9][A-Za-z0-9 .()+/_-]{0,79}$/.test(v.test) ||
+        v.test !== v.test.trim() ||
+        !Number.isInteger(v.count) || v.count < 0 || v.count > 100000 ||
+        typeof v.rate !== 'number' || !Number.isFinite(v.rate) ||
+        v.rate < 0 || v.rate > 1000000 ||
+        Math.abs(v.rate*100-Math.round(v.rate*100)) > 0.000001) {
+      throw new Error('Invalid examination, count or rate in the edit batch.');
+    }
+    const patient = ['Inpatient','Outpatient'].includes(v.patientGroup) &&
+      ['CHA','PAY'].includes(v.billing) && ['STAT','ROUTINE'].includes(v.priority);
+    const employee = v.patientGroup === 'Employee' &&
+      v.billing === 'QFS' && v.priority === 'QFS';
+    if (!patient && !employee) {
+      throw new Error('Invalid patient group, billing or priority in the edit batch.');
+    }
+    return v;
+  };
+
+  const seen = new Set();
+  const normalized = changes.map((change,index) => {
+    if (!change || !Number.isInteger(change.sheetRow) ||
+        change.sheetRow < CENSUS.firstDataRow ||
+        change.sheetRow > CENSUS.lastDataRow ||
+        !CENSUS.periods.includes(change.period)) {
+      throw new Error('Invalid row or reporting period in batch item ' + (index+1) + '.');
+    }
+    if (seen.has(change.sheetRow)) {
+      throw new Error('A source row was submitted more than once.');
+    }
+    seen.add(change.sheetRow);
+    return {
+      row: change.sheetRow,
+      period: change.period,
+      expected: validate(change.expected),
+      values: validate(change.values)
+    };
+  }).sort((a,b)=>a.row-b.row);
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    assertSourceSafeToEdit_();
+    const sheet = getCopySheet_();
+    const rows = readCopyRows_(sheet);
+    const formulaValues = sheet.getRange(CENSUS.firstDataRow,10,
+      CENSUS.lastDataRow - CENSUS.firstDataRow + 1,1).getFormulas();
+    const replacement = new Map();
+
+    for (const entry of normalized) {
+      const index = entry.row-CENSUS.headerRow;
+      const current = rows[index];
+      const original = fields.map((f,i)=>current[i+3]);
+      if (current[0] !== entry.period ||
+          original.some((v,i)=>v !== entry.expected[fields[i]])) {
+        throw new Error('Row '+entry.row+' has changed. Refresh and review the batch.');
+      }
+      if (formulaValues[entry.row-CENSUS.firstDataRow][0] !==
+          '=H'+entry.row+'*I'+entry.row) {
+        throw new Error('Row '+entry.row+' has a changed amount formula. No edits saved.');
+      }
+      replacement.set(entry.row, fields.map(f=>entry.values[f]));
+    }
+
+    // Detect collisions after applying the full proposed batch, allowing two
+    // records to exchange identities without producing a false conflict.
+    const finalKeys = new Set();
+    for (let i=1;i<rows.length;i++) {
+      const row = CENSUS.headerRow + i;
+      const r = rows[i];
+      const values = replacement.get(row) || r.slice(3,9);
+      const key = JSON.stringify([r[0],values[0],values[1],values[2],values[3]]);
+      if (finalKeys.has(key)) {
+        throw new Error('The proposed changes would create a duplicate examination/category in a reporting period.');
+      }
+      finalKeys.add(key);
+    }
+
+    // Group adjacent changes so many edits become fewer SpreadsheetApp writes.
+    const groups=[];
+    for (const entry of normalized) {
+      const last=groups[groups.length-1];
+      if (last && last.end===entry.row-1) {
+        last.end=entry.row;
+        last.entries.push(entry);
+      } else groups.push({start:entry.row,end:entry.row,entries:[entry]});
+    }
+    const completed=[];
+    try {
+      for (const group of groups) {
+        const range=sheet.getRange(group.start,4,group.entries.length,6);
+        const previous=group.entries.map(entry=>
+          rows[entry.row-CENSUS.headerRow].slice(3,9));
+        // Register before applying so a partially successful write is
+        // included in rollback attempts.
+        completed.push({range,previous});
+        range.setValues(group.entries.map(entry=>replacement.get(entry.row)));
+      }
+      SpreadsheetApp.flush();
+    } catch (writeError) {
+      let restored=true;
+      for (let i=completed.length-1;i>=0;i--) {
+        try {completed[i].range.setValues(completed[i].previous);}
+        catch (rollbackError) {restored=false;}
+      }
+      try {SpreadsheetApp.flush();} catch (flushError) {restored=false;}
+      throw new Error(restored
+        ? 'Batch save failed and rollback was attempted. Reload and check current values before retrying.'
+        : 'Batch save may be incomplete. Refresh, inspect affected rows, and reconcile before retrying.');
+    }
+    return {success:true,updatedCount:normalized.length,
+      rows:normalized.map(entry=>entry.row),groupsWritten:groups.length};
+  } finally {
+    lock.releaseLock();
+  }
+}
