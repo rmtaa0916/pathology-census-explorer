@@ -1,59 +1,64 @@
-# Pathology Census Explorer — Google Apps Script edition
+# Pathology Census Explorer — Apps Script working copy
 
-This folder contains the **Apps Script web app** on the `apps-script` branch. The PHP edition remains intact on `main`.
+The `apps-script` branch implements the Google Apps Script web application. The original PHP version remains on `main`.
 
-The existing responsive dashboard is preserved in `Index.html`. Its six views, charts, source editor, search, examination drill-down, and reporting periods are implemented with the same HTML/CSS/JavaScript. `Code.gs` provides server-side `SpreadsheetApp` reads and protected write operations through `google.script.run`.
+## Single working dataset
 
-**Data isolation:** Only the separate synthetic-only Google Sheet `1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE` and the `DEMO - Weekly Census` tab are used. The backend rejects unexpected tabs, non-synthetic rows, mismatched row identity, invalid counts and stale edits. Never swap in the original pathology census without an institutional security review.
+The app has **one data model**, regardless of whether it is used for exploration, editing, reporting previews or demonstrations. The connected Google Sheets **copy** is the working dataset. There is no special demo mode, no separate demo dataset, and no requirement that copied rows be artificially labeled.
 
-## Deploy to Apps Script
+- Connected spreadsheet: `1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE`
+- Data tab (existing physical tab name): `DEMO - Weekly Census`
+- Summary tab (existing physical tab name): `DEMO - Weekly Overview`
+- Current layout: December 2023, 792 source records across four reporting intervals
+- Rows and amounts are displayed as the values in the connected copy, not as a separately generated demonstration overlay
+- The original source workbook is **not edited** by the application
+- Column K is source metadata, remains read-only, and is **not** an authorization or eligibility gate
 
-1. Sign in as `rmtaa0916@gmail.com` and open your existing Pathology Census Explorer Apps Script project editor (or open the demo Sheet → **Extensions → Apps Script** to create a bound project). You may use the official `clasp` CLI to push this directory.
-2. Include `Code.gs`, `Index.html`, and `appsscript.json`. In the Apps Script editor, enable **Show appsscript.json manifest file in editor** under Project settings if necessary.
-3. Select **Deploy → New deployment → Web app**. Set **Execute as: Me**, **Who has access: Only myself**. Do not use public or anonymous access. Approve the Google Sheets and identity permissions.
-4. Visit the generated `/exec` URL while signed in. The owner must have access to the separate demo Sheet. There are **792 synthetic source records**, but counts and illustrative totals can change through permitted edits; never assume a fixed total.
-5. Open **Source records** from the sidebar or **Edit data** in the header. Filter by reporting interval, patient group or test; select **Edit** for any row (including zero-count rows).
-6. Edit the examination name, patient group, billing, priority, test count, or illustrative unit rate. **Save changes** updates only columns **D:I** in the synthetic Sheet. Column **J** retains its `=H×I` formula; overview metrics and charts are refreshed automatically.
-7. The same editor is accessible from an examination's detail drawer, scoped to the selected reporting interval. Test one change, verify formula recalculation in Google Sheets, and use **Undo last edit** after a confirmed save to restore the previous values.
-8. **Redeploy:** After updating the Apps Script editor with the latest `Code.gs` and `Index.html`, choose **Deploy → Manage deployments → Edit → Version: New version → Deploy**. Updating GitHub alone does not change the live `/exec` URL; publishing a new version of the existing deployment keeps the current URL and TinyURL alias.
+The word “DEMO” remains in the existing physical Google Sheet tab titles to avoid changing any linked formulas or references. The interface calls the dataset the **working copy**.
 
-### Security and deployment caveats
+Data from a copy can be used to demonstrate the full functionality. If the copy ever contains real clinical or other confidential records, do not make the deployment public or share its link with unauthorized users; copying does not anonymize data.
 
-- The Apps Script service runs under the Google account used for deployment; no service-account JSON or PHP hosting is needed.
-- **Owner-only** access is mandatory for this pilot. Server functions compare the active user email to `rmtaa0916@gmail.com` and fail closed if that email is unavailable.
-- This project is synthetic-only, not appropriate for clinical production without institutional authorization, per-user roles, logging, privacy and cybersecurity review.
-- HTML Service uses a sandboxed iframe; verify UI on the actual Apps Script deployment even though local previews passed.
-- A GitHub branch does not automatically publish an Apps Script web app. After changes are pushed, update the Apps Script project/deployment.
-- Never commit keys, private data, or the original clinical workbook.
+## Capabilities
 
-To run the local backend and frontend tests: `node tests/backend.test.cjs` and `node tests/frontend.test.cjs` (Node.js required; Apps Script APIs and the DOM are mocked). GitHub Actions runs both on each change to the `apps-script` branch.
+Six interactive views: Overview, Reporting intervals, Examinations, Workload & income, Source records and Data quality. Views share source data and support filters, rankings, drill-down, editing, and refresh.
 
-## Source editing policy
+Only columns **D:I** can be edited from the application:
 
-| Field | Source column | Editable? |
+| Column | Field | Rule |
 |---|---|---|
-| Reporting interval and start/end dates | A–C | No — fixed source schedule |
-| Examination | D | Yes — validated name; no formulas |
-| Patient group | E | Yes — Inpatient/Outpatient/Employee |
-| Billing | F | Yes — CHA/PAY for patient rows, QFS for Employee |
-| Priority | G | Yes — STAT/ROUTINE for patient rows, QFS for Employee |
-| Test count | H | Yes — whole number, 0–100,000 |
-| Illustrative unit rate | I | Yes — 0–1,000,000, maximum 2 decimals |
-| Formula-based amount | J | No — recalculates as count × rate |
-| Synthetic safety marker | K | No — immutable |
+| A–C | Period / start and end dates | Read-only |
+| D | Examination | Validated name |
+| E | Patient group | Inpatient, Outpatient or Employee |
+| F | Billing | CHA/PAY for patients; QFS for Employee |
+| G | Priority | STAT/ROUTINE for patients; QFS for Employee |
+| H | Test count | Whole number from 0 through 100,000 |
+| I | Unit rate | Nonnegative, maximum 2 decimal places |
+| J | Calculated amount | Read-only formula `=H(row)*I(row)` |
+| K | Original source metadata/status | Preserved, read-only, no demo-only gating |
 
-The server rechecks the previous values under a script lock before writing, rejects duplicate category identities within an interval, and checks the amount formula remains intact. All 792 source rows remain accessible even when their count is zero. A separate **Source records** table offers filtered, paginated editing. All dashboard KPIs and summary tables remain derived outputs, not separately editable fields.
+The backend pins the spreadsheet ID and exact named tabs, checks source row identity and previous values, verifies the existing formula, uses a script lock, and rejects duplicate category identities when category fields change.
 
-## Editing reliability and data checks
+Saving confirms the write before refreshing the dashboard. Uncertain responses are resolved by rereading Sheets before another edit. The UI supports unsaved-change warnings, single-record Undo with stale-value protection, and quality checks of formulas, categories, duplicate keys, amounts, numeric inputs, reporting ranges and totals.
 
-- **Two distinct completion states:** the app confirms the Google Sheets save first and then refreshes the dashboard. A failed refresh never reports that the save failed.
-- **Unconfirmed writes:** a network or callback failure disables repeat submission. **Reload latest Sheet values** reads the source before determining whether the change was applied, rejected, or superseded.
-- **Concurrent edits:** the server uses script locking, source row identity, old-value comparison, formula protection and duplicate-key detection before writing. The editor cannot be closed during an active save, and delayed callbacks are guarded by the editor session.
-- **Unsaved changes:** cancelling an edited form prompts before discarding. Reloading or leaving during an active edit also requests browser confirmation when supported.
-- **Undo last edit:** available after a confirmed save and successful refresh. It restores the prior input columns through the same locked, stale-write-protected server function. Undo is not a permanent audit log and can be rejected if someone else changed the row.
-- **Live Data quality page:** checks 792 synthetic markers, valid group/billing/priority combinations, duplicate category identities, 792 amount formulas, count×rate reconciliation, numeric inputs, four expected reporting intervals, and dashboard totals. Results reflect the latest fetch; errors are not hardcoded as “Pass.”
-- **Display edge cases:** zero-total workloads produce 0% instead of NaN, and examination sorting supports both directions.
+## Deployment
 
-### Deployment reminder
+1. Open the existing Pathology Census Explorer Apps Script project as its authorized owner.
+2. Paste the current `Code.gs` and `Index.html` from this branch. If changing manifest permissions, update `appsscript.json`.
+3. Save. To preserve the existing public-facing alias, choose **Deploy → Manage deployments → Edit → New version → Deploy**. Do not create a new deployment unless you want a new `/exec` URL.
+4. Keep **Execute as: Me** and **Who has access: Only myself** during this pilot. The server additionally verifies the active user's email.
+5. Confirm that the existing working Sheet is connected. Test a single edit, formula calculation, refresh, and Undo using a non-sensitive row.
 
-GitHub **does not publish updates** to an existing Apps Script URL by itself. Open the existing project and copy the updated `Code.gs` and `Index.html` (plus the manifest when changed); then use **Deploy → Manage deployments → Edit → New version → Deploy**. This preserves the existing `/exec` URL and TinyURL redirect. Do not choose New deployment if you want the same link. Confirm the website's owner-only access setting.
+GitHub commits do **not** automatically update the live Apps Script deployment. The existing TinyURL forwards to the current `/exec` URL; updating that deployment keeps the alias.
+
+## Tests
+
+```sh
+node tests/backend.test.cjs
+node tests/frontend.test.cjs
+```
+
+GitHub Actions runs these checks for changes to `apps-script`. Local browser tests exercise the asynchronous workflow with mocked `google.script.run`; they are not a substitute for verifying the published Google-hosted version.
+
+## Boundaries
+
+The existing December 2023 layout is intentionally fixed to 792 rows; adding months/rows requires a schema update. The app is not yet equipped with institutional approval, multi-user roles, immutable edit history or medical data governance controls. The working copy should not be treated as the official census solely because its values can be displayed or edited.
