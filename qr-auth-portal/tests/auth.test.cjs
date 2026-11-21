@@ -15,7 +15,7 @@ assert.match(html,/function onReply\(event\)/);
 assert.match(api,/window\.top\.postMessage/);
 assert.match(html,/new QRCode/);
 assert.match(html,/Sign in to record activities/);
-assert.match(config,/clientId: ""/);
+assert.match(config,/clientId: "[0-9]+-[A-Za-z0-9_-]+\\.apps\\.googleusercontent\\.com"/);
 assert.match(config,/endpoint: ""/);
 let inline=html.match(/<script>\s*'use strict';([\s\S]*?)<\/script>/);
 assert.ok(inline,'Main browser code present');
