@@ -164,6 +164,10 @@ function submit(e){
  LOCKED=true;formLocked(true);el('save').disabled=true;el('save').textContent='Saving…';showStatus('Submitting transaction '+PENDING.transactionId+'…');
  google.script.run.withSuccessHandler(result=>{
    LOCKED=false;LAST_SUCCESS=true;el('save').disabled=true;el('new').style.display='inline-block';
+   if(!result.duplicate && result.action==='KIT_OPENED' && result.kitId){
+     DATA.openedKits=Array.from(new Set([...(DATA.openedKits||[]),result.kitId]));
+   }
+   if(!result.duplicate && result.kitId && result.balance!==null)DATA.balances[result.kitId]=result.balance;
    showStatus((result.duplicate?'Already recorded — no duplicate deduction. ':'Saved. ')+
      'Transaction '+result.transactionId+(result.balance===null?'':'; new stock '+result.balance),'good');
    refreshData(false);
