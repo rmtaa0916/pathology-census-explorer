@@ -295,9 +295,11 @@ function reports(){
   const rows=RECORDS.filter(r=>chosen===null||r.period===chosen);
   const count=rows.reduce((total,r)=>total+Number(r.count||0),0);
   const amount=rows.reduce((total,r)=>total+Number(r.amount||0),0);
+  const hasPending=stagedChanges.size>0||batchUnconfirmed||batchSaving;
   return `${pageIntro('Reporting / printable documentation','A4 formal census report',
     'Create a formal, print-ready report for one reporting interval or the complete December 2023 coverage.')}
     <div class="card report-form">
+      ${hasPending?'<div class="alertline" role="alert">Staged or uncertain edits must be saved and reconciled before creating a new report. Generated reports include only saved source values.</div>':''}
       <p class="fine">Reports are generated from the current dataset with full examination-level totals, patient-group, priority and billing breakdowns. A detailed category appendix is optional.</p>
       <form method="get" action="report.php">
         <label for="reportPeriod">Reporting coverage</label>
@@ -311,7 +313,7 @@ function reports(){
           <div><span>Examinations</span><b>${fmtInt(count)}</b></div>
           <div><span>Calculated amount</span><b>${fmtMoney(amount)}</b></div>
         </div>
-        <button type="submit" class="report-primary">Generate A4 report</button>
+        <button type="submit" class="report-primary" ${hasPending?'disabled':''}>Generate A4 report</button>
       </form>
       <p class="fine">The report opens as an authenticated, printable A4 page. Select Print / Save PDF to create a PDF on your device. Sign-off fields are intentionally blank until verified.</p>
     </div>`;
