@@ -208,6 +208,15 @@ assert.equal((printed.match(/<section class="report-appendix">/g)||[]).length,1,
 const screenSetup=get('content').innerHTML;
 assert.ok(screenSetup.includes('type="checkbox" id="reportDetail"'),'Appendix checkbox present');
 assert.ok(html.includes('.report-paper *:not(img){color:#000!important'),'Formal report text is black');
+assert.ok(html.includes('font-family:Arial,Helvetica,sans-serif!important;'),'Formal reports match Arial used in recent LCP letters');
+assert.ok(html.includes('font-size:10pt!important;'),'Formal report body matches 10 pt letter body');
+assert.ok(html.includes('line-height:1.05!important;'),'Formal reports match 105% letter line spacing');
+assert.ok(html.includes('color:#000!important;opacity:1'),'All textual report elements render solid black');
+assert.ok(html.includes('font-size:12pt;font-weight:700'),'Report title has restrained bold hierarchy');
+assert.ok(html.includes('font-size:10pt;font-weight:700'),'Report headings and signatory names use 10 pt bold');
+assert.ok(html.includes('text-transform:none;letter-spacing:0'),'No decorative all-caps section treatment');
+assert.ok(html.includes('#reportPreview .report-page-counter{color:#000'),'Preview page counter is black');
+assert.ok(html.includes('.report-stationery{filter:none!important}'),'Original-color LCP letterhead remains unmodified');
 assert.ok(html.includes('reportSecondRoleOptions'),'Second approval label is selectable');
 console.log('Black report fonts, original-color repeated letterhead, optional appendix and signatories passed');
 (async()=>{
