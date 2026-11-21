@@ -46,6 +46,20 @@
 .source-health-text strong{font-size:12px}.source-health-text p{margin:3px 0 0}
 .source-health .sourcebtn{white-space:nowrap}
 @media(max-width:500px){.source-health .sourcebtn{flex:1}}
+
+.batch-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:0 0 17px;border:1px solid #bfd7e8;border-left:4px solid #14639a;background:#f2f8fd;padding:12px 14px;border-radius:10px}
+.batch-copy{display:flex;flex-direction:column;gap:4px;flex:1 1 260px}
+.batch-copy strong{font-size:12px;color:#17486e}.batch-copy span{font-size:11px;color:#567486;line-height:1.45}
+.batch-primary{background:#145d93;border:1px solid #145d93;color:white;font-weight:750;font-size:11px;padding:10px 14px;border-radius:8px;white-space:nowrap}
+.batch-primary:hover{background:#0d497a}.batch-primary:disabled{opacity:.55;cursor:not-allowed}
+tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d5e7f3}
+.staged-marker{display:inline-block;margin:3px 0 0;font-size:9px;font-weight:700;color:#185b89;background:#e3f2fd;border-radius:5px;padding:2px 5px}
+.batch-review-row{margin:12px 0;padding:13px 0;border-bottom:1px solid #e5ebee}
+.batch-review-row strong{color:#264b60}.batch-review-detail{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#627885;margin:9px 0}
+.batch-review-detail span{line-height:1.4}.batch-review-detail b{font-weight:700;color:#314f64}
+.batch-review-actions{display:flex;gap:7px;flex-wrap:wrap}
+.batch-review-row .sourcebtn{font-size:10px}.batch-toolbar .sourcebtn:disabled{opacity:.5}
+@media(max-width:560px){.batch-toolbar .batch-primary{flex:1 1 100%;text-align:center}}
 </style></head>
 <body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></div><div><b>Pathology Census</b><small>Laboratory analytics · working copy</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="records"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>Source records</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status" id="sourceSideHealth" aria-live="polite"></div></aside><main class="main"><div class="topbar"><div class="breadcrumb">Reports <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">Dec 2023 · working copy</span><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE/edit">Open source Sheet ↗</a> <button type="button" class="sourcebtn" data-open-records> Edit data </button><button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">WORKING COPY. All views and edits use the connected census copy. The original source workbook is not changed. Refreshing reloads current values from Google Sheets. <span style="color:#126a64">Google Apps Script · owner-only web app</span></div></main></div><div class="detail-backdrop" id="backdrop"></div><div class="drawer" id="drawer"></div>
 <script>
@@ -56,7 +70,9 @@ let S=DATA.summary_stats, EXAMS=DATA.exams, ENTRIES=DATA.entries, RECORDS=DATA.r
 const fmtInt=n=>Number(n).toLocaleString('en-PH'),fmtMoney=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:0,maximumFractionDigits:2});
 const escapeHtml=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let activePage='overview',chartMetric='volume',tableQuery='',tableSort='volume',tableSortDir='desc';
-let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null, staleDashboard=false, lastCommittedEdit=null, undoInProgress=false;
+let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null, drawerStarting=null, staleDashboard=false, lastCommittedEdit=null, undoInProgress=false;
+const stagedEdits=new Map();
+let batchState='ready',batchNotice='';
 
 function sourceHealthSummary(){
   if(!SOURCE)return 'Source monitoring status unavailable';
@@ -228,6 +244,147 @@ function periods(){const rows=periodEntries(),totals=periodSums(rows),tests=peri
 ${intervalPanel()}
 <div class="grid2"><section class="card"><div class="card-header"><div><h3>${selected.label} · examination detail</h3><div class="minor">${fmtInt(totals[selectedInterval])} examinations in current category</div></div></div><div class="insight">Review the examination counts for this interval in the connected working copy.</div><div class="table-wrap"><table class="t"><thead><tr><th>Examination</th><th class="right">Selected interval</th><th class="right">December total</th></tr></thead><tbody>${tests.map(t=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(t.test)}">${escapeHtml(t.test)}</button></td><td class="right ${t.weeks[selectedInterval]?'period-on':''}">${fmtInt(t.weeks[selectedInterval])}</td><td class="right">${fmtInt(t.weeks.reduce((a,b)=>a+b,0))}</td></tr>`).join('')||'<tr><td colspan="3">No test entries</td></tr>'}</tbody></table></div></section>
 <section class="card"><div class="card-header"><div><h3>Reporting matrix</h3><div class="minor">All four lab-defined date ranges</div></div></div><div class="table-wrap"><table class="t period-table"><thead><tr><th>Period</th><th class="right">Count</th><th>Status</th></tr></thead><tbody>${INTERVALS.map((it,i)=>`<tr><td>${it.label}</td><td class="right">${fmtInt(totals[i])}</td><td>Working copy</td></tr>`).join('')}<tr><td><b>December total</b></td><td class="right"><b>${fmtInt(total)}</b></td><td>Calculated</td></tr></tbody></table></div><div class="period-note">The periods are not equal length. For meaningful trend analysis, use verified real source data and normalize by day.</div></section></div>`}
+
+
+const sourceFields=['test','patientGroup','billing','priority','count','rate'];
+function recordValues(record){
+  return Object.fromEntries(sourceFields.map(f=>[f,record[f]]));
+}
+function recordValuesMatch(a,b){
+  return sourceFields.every(f=>a[f]===b[f]);
+}
+function validateRecordClient(v){
+  return /^[A-Za-z0-9][A-Za-z0-9 .()+/_-]{0,79}$/.test(v.test) &&
+    Number.isInteger(v.count)&&v.count>=0&&v.count<=100000 &&
+    Number.isFinite(v.rate)&&v.rate>=0&&v.rate<=1000000 &&
+    Math.abs(v.rate*100-Math.round(v.rate*100))<=0.000001 &&
+    (['Inpatient','Outpatient'].includes(v.patientGroup)&&['CHA','PAY'].includes(v.billing)&&
+     ['STAT','ROUTINE'].includes(v.priority) ||
+     v.patientGroup==='Employee'&&v.billing==='QFS'&&v.priority==='QFS');
+}
+function stageSourceRecord(record,values){
+  if(!validateRecordClient(values))throw Error('Check examination, group, billing, priority, count and rate before staging.');
+  const original=recordValues(record);
+  if(recordValuesMatch(original,values)){
+    stagedEdits.delete(record.sheetRow);
+    return false;
+  }
+  if(stagedEdits.size>=100&&!stagedEdits.has(record.sheetRow)){
+    throw Error('Up to 100 records can be saved in one batch.');
+  }
+  stagedEdits.set(record.sheetRow,{sheetRow:record.sheetRow,period:record.period,
+    expected:original,values:{...values}});
+  return true;
+}
+function batchToolbar(){
+  const n=stagedEdits.size;
+  if(!n&&!batchNotice)return '';
+  const canEdit=batchState==='ready'&&!SOURCE?.needsReview&&!staleDashboard;
+  return `<div class="batch-toolbar" role="status" aria-live="polite">
+    <div class="batch-copy"><strong>${n} unsaved change${n===1?'':'s'} staged</strong>
+      <span>${escapeHtml(batchNotice||'Continue editing records; all staged changes save together.')}</span></div>
+    ${n?`<button class="sourcebtn" type="button" data-batch-review>Review</button>
+      <button class="sourcebtn" type="button" data-batch-discard ${batchState!=='ready'?'disabled':''}>Discard</button>
+      <button class="batch-primary" type="button" data-batch-save ${canEdit?'':'disabled'}>
+        ${batchState==='saving'?'Saving…':batchState==='refreshing'?'Refreshing…':'Save all ('+n+')'}</button>`:''}
+    ${batchState==='unconfirmed'||batchState==='blocked'?'<button class="sourcebtn" type="button" data-batch-reconcile>Reconcile with Sheet</button>':''}
+  </div>`;
+}
+function reviewStagedEdits(){
+  if(!stagedEdits.size)return;
+  if(drawerSaving||undoInProgress||batchState!=='ready')return;
+  const drawer=document.getElementById('drawer');
+  drawerEpoch++;drawerOriginal=null;drawerStarting=null;
+  const changes=[...stagedEdits.values()].sort((a,b)=>a.sheetRow-b.sheetRow);
+  drawer.innerHTML=`<button type="button" class="close" id="closeBatchReview">Close ×</button>
+    <p class="eyebrow">Batch review</p><h2 style="font-size:24px;margin:0 0 8px">${changes.length} records awaiting save</h2>
+    <p class="fine">Each edit stays on this device until Save all. No spreadsheet values have changed yet.</p>
+    ${changes.map(c=>{
+      const changed=sourceFields.filter(f=>c.expected[f]!==c.values[f]);
+      return `<div class="batch-review-row">
+        <div><strong>${escapeHtml(c.values.test)}</strong><div class="fine">${escapeHtml(c.period)} · Source row ${c.sheetRow}</div></div>
+        <div class="batch-review-detail">${changed.map(f=>`<span><b>${escapeHtml(f)}</b>:
+          ${escapeHtml(String(c.expected[f]))} → <strong>${escapeHtml(String(c.values[f]))}</strong></span>`).join('')}</div>
+        <div class="batch-review-actions">
+          <button type="button" class="sourcebtn" data-edit-staged="${c.sheetRow}">Edit again</button>
+          <button type="button" class="sourcebtn" data-remove-staged="${c.sheetRow}">Remove</button>
+        </div>
+      </div>`;
+    }).join('')}
+    <button type="button" class="batch-primary" data-batch-save>Save all ${changes.length} records</button>
+    <p class="fine">Before saving, the server checks every record for stale values, duplicate categories and formula changes. All prechecks must pass.</p>`;
+  drawer.classList.add('show');
+  document.getElementById('backdrop').classList.add('show');
+  drawer.querySelector('#closeBatchReview').addEventListener('click',closeDrawer);
+  drawer.querySelectorAll('[data-edit-staged]').forEach(b=>b.addEventListener('click',()=>{
+    const row=Number(b.dataset.editStaged);closeDrawer(true);openRecordEditor(row);
+  }));
+  drawer.querySelectorAll('[data-remove-staged]').forEach(b=>b.addEventListener('click',()=>{
+    stagedEdits.delete(Number(b.dataset.removeStaged));
+    closeDrawer(true);render();
+    if(stagedEdits.size)reviewStagedEdits();
+  }));
+  drawer.querySelector('[data-batch-save]').addEventListener('click',()=>{
+    closeDrawer(true);saveStagedEdits();
+  });
+}
+async function saveStagedEdits(){
+  if(!stagedEdits.size||batchState!=='ready'||drawerSaving||undoInProgress)return;
+  if(SOURCE?.needsReview||staleDashboard){
+    batchNotice='The current Sheet must be checked before saving.';render();return;
+  }
+  const snapshot=[...stagedEdits.values()].map(c=>({...c,
+    expected:{...c.expected},values:{...c.values}}));
+  if(!confirm('Save all '+snapshot.length+' staged record changes to Google Sheets?'))return;
+  batchState='saving';batchNotice='Validating and saving the batch…';render();
+  try {
+    const result=await new Promise((resolve,reject)=>google.script.run
+      .withSuccessHandler(resolve).withFailureHandler(reject)
+      .updateRecordsBatch({changes:snapshot}));
+    if(!result||result.success!==true||result.updatedCount!==snapshot.length)
+      throw Error('Save could not be verified.');
+  }catch(error){
+    batchState='unconfirmed';staleDashboard=true;
+    batchNotice='Save result not confirmed: '+String(error?.message||error)+
+      ' Reconcile with Sheets before trying again.';
+    render();return;
+  }
+  stagedEdits.clear();lastCommittedEdit=null;
+  batchState='refreshing';batchNotice='Saved. Reloading calculated data…';render();
+  try{
+    applyFreshDataset(await requestFreshDataset());
+    batchState='ready';batchNotice=snapshot.length+' records saved with one request; dashboard refreshed.';
+    render();
+  }catch(error){
+    staleDashboard=true;batchState='blocked';
+    batchNotice='The batch saved to Sheets, but refreshing failed. Reconcile to see the latest totals.';
+    render();
+  }
+}
+async function reconcileStagedEdits(){
+  if(!['unconfirmed','blocked'].includes(batchState))return;
+  const waiting=[...stagedEdits.values()];
+  batchState='reconciling';batchNotice='Reading the latest values; no writes will be made…';render();
+  try{
+    const fresh=await requestFreshDataset();
+    let applied=0,unchanged=0,conflicts=0;
+    for(const item of waiting){
+      const current=fresh.records.find(r=>r.sheetRow===item.sheetRow);
+      if(current&&recordValuesMatch(current,item.values)){
+        stagedEdits.delete(item.sheetRow);applied++;
+      }else if(current&&recordValuesMatch(current,item.expected)){unchanged++;}
+      else{stagedEdits.delete(item.sheetRow);conflicts++;}
+    }
+    applyFreshDataset(fresh);batchState='ready';
+    batchNotice='Reconciled: '+applied+' already applied, '+unchanged+
+      ' still pending, '+conflicts+' changed elsewhere. Review before saving again.';
+    render();
+  }catch(error){
+    batchState='unconfirmed';staleDashboard=true;
+    batchNotice='Reconciliation failed; Sheet values cannot yet be confirmed.';
+    render();
+  }
+}
 
 let recordQuery='',recordPeriod='all',recordGroup='all',recordPage=0;
 const recordsPerPage=35;
