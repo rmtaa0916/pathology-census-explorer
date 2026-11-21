@@ -19,5 +19,5 @@ function appAuthenticate(): void {
 function fetchDataset(): array {
     if (currentMode() === 'demo') return CensusData::fromSheetRows(CensusData::mockRows());
     $api = new SheetsClient();
-    return CensusData::fromSheetRows($api->readRows(),$api->spreadsheetId());
+    return CensusData::fromSheetRows($api->readRows(), $api->spreadsheetId(), false);
 }
