@@ -5,6 +5,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start(['cookie_httponly'=>t
 $_SESSION['csrf'] ??= bin2hex(random_bytes(24));
 try { $data = fetchDataset(); }
 catch (Throwable $error) { http_response_code(503);header('Content-Type: text/plain; charset=utf-8');exit('Dashboard unavailable: ' . $error->getMessage()); }
+$brand = require __DIR__ . '/../src/LcpBrandAssets.php';
 $json = json_encode($data, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR);
 header('Cache-Control: private, no-store');
 ?>
@@ -64,14 +65,43 @@ header('Cache-Control: private, no-store');
 .record-total strong{color:#174d72}.batch-review{margin:12px 0;border-bottom:1px solid #e6edef;padding:12px 0;font-size:11px;line-height:1.6}
 .batch-review div{display:flex;flex-direction:column;gap:3px;margin:6px 0}.batch-review span{color:#526e7d}
 @media(max-width:560px){.php-edit-form{grid-template-columns:1fr}.batchbar .batch-save{flex:1 1 100%}}
+
+
+/* Responsive drawers must display content, or a helpful empty state. */
+.drawer{visibility:hidden;pointer-events:none;overflow-x:hidden;overscroll-behavior:contain}
+.drawer.show{visibility:visible;pointer-events:auto}
+.drawer .drawer-head{display:flow-root;margin-bottom:12px}
+.drawer .drawer-title{font-size:23px;line-height:1.2;overflow-wrap:anywhere;margin:0 0 9px}
+.drawer .drawer-empty{padding:16px;margin:14px 0;background:#f7f9fa;border:1px solid #dce6e9;border-radius:8px;line-height:1.6;font-size:12px}
+.drawer .drawer-empty strong{display:block;margin-bottom:6px}
+.drawer .drawer-period-picker{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:15px 0;font-size:11px;font-weight:700}
+.drawer .drawer-period-picker select{width:100%;padding:10px;border:1px solid #ccdbe0;border-radius:7px;background:white;color:#203945;font:inherit}
+.drawer .drawer-records-table{overflow-x:auto;max-width:100%}
+.drawer .drawer-records-table table{min-width:360px}
+.drawer .drawer-records-table .sourcebtn{white-space:nowrap}
+@media(max-width:600px){.drawer{width:100vw;padding:19px 16px 36px}.drawer .drawer-title{font-size:21px}}
+
+/* Synced from latest Apps Script reporting controls, without changing census editor layout. */
+.report-signatures-form{width:100%;padding:15px;border:1px solid #d8e4e9;border-radius:9px;background:#fff}
+.report-signatures-form h3{margin:0 0 8px;font-size:13px;color:#243b47}
+.report-signature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%}
+.report-signature-grid fieldset{min-width:0;border:1px solid #d8e4e9;border-radius:8px;padding:12px}
+.report-signature-grid legend{font-size:12px;font-weight:700;padding:0 5px}
+.report-form .report-signature-grid label{display:flex;flex-direction:column;align-items:stretch;gap:5px;margin:8px 0 12px;font-size:11px}
+.report-form .report-signature-grid input,.report-form .report-signature-grid select{min-width:0;width:100%;max-width:none;background:#fff;border:1px solid #ccdbe0;border-radius:6px;padding:10px;color:#193744;font-size:12px}
+.report-hint{font-size:11px;color:#48606b;line-height:1.5;margin:10px 0 0}
+.report-appendix{align-self:stretch}
+@media(max-width:600px){.report-signature-grid{grid-template-columns:1fr}}
+
 </style></head>
-<body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><img src="data:image/webp;base64,UklGRuoEAABXRUJQVlA4IN4EAABwGQCdASpoADgAPsFQoUwnpKMiLJF+GPAYCWYAyBim0JSgbH3Og+v4lIT2/fO6t6r/Vct8fi/tPNj9PPGHam3y/RvBlvgtVNWBNG8p2bMxc1t8MLne3d7n+9pLitmylHF8GqrgZMwJtJLlC4gEWqLJ4Cx+M5BkshX4aCJqAr4TwBjZe3aDQWI3BFgHPC9YJxEtpG8NG9aOzxcisEOTEMLvZtctBSFQ4F0OLuESm/uj7l4TBk9QikDknh4MVkQnpAQeNxPWNnWPXZIn+YwJooeOWMh/AAD+/pOMW/UnViKtrj4EbjQ4Api7b1GUMtFRPFhSymgjiu6CzxRp5ehShohK4v4Q+/e/3o+ekL2cLA868WxEjDTB9dZbHkLT2CeJisDSdLNqcnh7Oob4zOwhiNnKLT5Q1+7O8l/FKlIZMVynlbJ6ng/fYmFF/qf23S/HUcjq4WQVFLpsc/u0xaZLuT7k4CuowIDrDok4GOF0x2rI9GmYg1wTtl2Vq16LduJGYZG+na53DuzGtxaFTz3qdqYk9PcweJOjRrIqbFFbwRMq/j5zMCTAI+YapITdypDb56POSLXUSLentRAXd/Sa1R2rdBQFxeZ6oGxbM3HdtBvAtYjpeOqx3w+Vxb4Tkr7jbC/v8VV0kYi9rSOu8TwM8z8htB+hXQq+O673SrE5DLicuGfYXzaTM38KFLMQBNB+dcdPIa+HPUMh9ZsawgJ53vi8tBHjGsuH+zvrP9RjGciMrv00mfXEF3i8P3TEzdJtKGOdGkjZpbKVddWouLLSrvMiAUkPP/g5a3ymJLe8606gNJR/Sk+HtIinYexbUADg4P1gEoQG4AL2btSAHwuFZ/OroF8yMyf/pJ4ptqvwKFu+KohUlOzXGOvdAbtzokVMTe4KBuXO5Bj1aBZZFuGTGsu8PHk38DWvxR6aD+V4WIfSJ0x1YlCkDrWSHYLEmBta4bBPNOOJ3leSaL//3t9NAUbhU2P8tKSkEFv79Tq+kq6TMW4jkJBfZRaPi5E7G/NJyDTQh+P5KUmhnE0zmBaeImU0kJyMN3ZKgbXdLftn8OT5vagunspq+VqwdmUP+ZdXwfssh985tT1XxEA5bq/CanOqt8NQx8JY+B6WL5kErOP6UoPTzbkQumec2EGK9i1oXhJu79943aiPtpBAUq8y3CCA/eO62jnQlVlLqIp8tzjX4LK9o+kaWXPq3sh3xbFnHC0zHvTUnT1aKWux0OJMe3/V++wpHWN4arHzxkhgCEj25h20g1dhPwswUwZlMt1r9ZYA52fKh91mvw/eIxvmfGd7oFX8vxVXFvz4cbZWJTinJy3VA/34FD2ptey6TTJRNtedq41LRRBh5BHWP5A50aIjvN1uGYpn4RaGqP+SoX0XMErkm8v8wUHae/aON4R6090dRIVooCVfxtapLDbET71NycG4t513fl/4Cufa3BbbuLwWBnFSnqo0TcyWpO5lgZvVjafvyzB+g3/cu4inGIeq1j53DmE/vqNuCkNOkiRzJ+wB8l+AD/Og1bCKrLnpImdeyOpY75/5zB828EZj/ifOaOJYwWNKW1JAe9j40C1uWdmlMD5wozRQYqASy0agYV+P7yoW6SLTX93qfnS6kLetLQ/0A2yn6PnQwNK8lO2gc8j28MBIgt2v+OwBsQAA" alt="Lung Center of the Philippines emblem"></div><div><b>Pathology Census Explorer</b><small>Lung Center of the Philippines</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="records"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>Source records</button><button class="nav" data-nav="reports"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h8"/></svg>Formal reports</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status"><div><span class="status-dot"></span><b><?php echo currentMode()==='live'?'Google Sheets connected':'Local sample preview'; ?></b></div><p><?php echo currentMode()==='live'?'Connected working-copy dataset':'Local fixture for testing report layouts'; ?></p></div></aside><main class="main"><div class="lcp-brand-band"><div><div class="lcp-institution">LUNG CENTER OF THE PHILIPPINES</div><div class="lcp-department">Pathology and Laboratory Medicine Department</div><div class="lcp-location">Quezon Avenue Extension, Quezon City, Philippines 1100</div></div><span class="lcp-module-label">IMMUNOLOGY CENSUS</span></div><div class="topbar"><div class="breadcrumb">LCP <span>/</span> Pathology and Laboratory Medicine <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">December 2023</span><a class="sourcebtn" href="report.php?period=all">Generate A4 report</a><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="<?php echo htmlspecialchars($data['source']['google_sheets_url'], ENT_QUOTES); ?>">Open demo Sheet ↗</a> <button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">Lung Center of the Philippines · Pathology and Laboratory Medicine Department · Immunology census.
-<?php if(currentMode()!=='live'): ?><strong>Local sample-data preview.</strong> Connect the authorized Google Sheets working copy for current values.<?php else: ?>Connected to a separate working-copy spreadsheet. Original workbook remains unchanged.<?php endif; ?> <span style="color:#126a64">PHP implementation · controlled access</span></div></main></div><div class="detail-backdrop" id="backdrop"></div><div class="drawer" id="drawer"></div>
+<body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><img src="<?=htmlspecialchars($brand['emblem'], ENT_QUOTES, 'UTF-8')?>" alt="Lung Center of the Philippines emblem"></div><div><b>Pathology Census Explorer</b><small>Lung Center of the Philippines</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="records"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>Source records</button><button class="nav" data-nav="reports"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h8"/></svg>Formal reports</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status"><div><span class="status-dot"></span><b><?php echo currentMode()==='live'?'Google Sheets connected':'Local sample preview'; ?></b></div><p><?php echo currentMode()==='live'?'Connected working-copy dataset':'Local fixture for testing report layouts'; ?></p></div></aside><main class="main"><div class="lcp-brand-band"><div><div class="lcp-institution">LUNG CENTER OF THE PHILIPPINES</div><div class="lcp-department">Pathology and Laboratory Medicine Department</div><div class="lcp-location">Quezon Avenue Extension, Quezon City, Philippines 1100</div></div><span class="lcp-module-label">IMMUNOLOGY CENSUS</span></div><div class="topbar"><div class="breadcrumb">LCP <span>/</span> Pathology and Laboratory Medicine <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">December 2023</span><a class="sourcebtn" href="report.php?period=all">Generate A4 report</a><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="<?php echo htmlspecialchars($data['source']['google_sheets_url'], ENT_QUOTES); ?>">Open demo Sheet ↗</a> <button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">Lung Center of the Philippines · Pathology and Laboratory Medicine Department · Immunology census.
+<?php if(currentMode()!=='live'): ?><strong>Local sample-data preview.</strong> Connect the authorized Google Sheets working copy for current values.<?php else: ?>Connected to a separate working-copy spreadsheet. Original workbook remains unchanged.<?php endif; ?> <span style="color:#126a64">PHP implementation · controlled access</span></div></main></div><div class="detail-backdrop" id="backdrop"></div><div class="drawer" id="drawer" aria-hidden="true"></div>
 <script>
 const DATA=<?php echo $json; ?>;
 const WRITES_ENABLED=<?php echo currentMode()==='live' && getenv('APP_WRITE_ENABLED')==='1' ? 'true':'false'; ?>;
 const CSRF=<?php echo json_encode($_SESSION['csrf']); ?>;
 const S=DATA.summary_stats, EXAMS=DATA.exams, ENTRIES=DATA.entries, RECORDS=DATA.records||[];
+const IS_DEMO=!!DATA.source?.is_demo;
 const stagedChanges=new Map();
 let recordSearch='',recordPeriod='all',recordGroup='all',recordPage=0,batchSaving=false,batchUnconfirmed=false,batchNotice='';
 const pageSize=35;
@@ -93,44 +123,165 @@ function metricCard(label,val,note,primary=false){return `<section class="card k
 function barList(list,metric='volume',maxRows=7){let max=Math.max(...list.map(e=>e[metric]),1);return list.slice(0,maxRows).map((r,i)=>`<div class="bar-row"><div class="bar-name" title="${escapeHtml(r.test||r.label)}">${escapeHtml(r.test||r.label)}</div><div class="bar-bg"><div class="bar-fill" style="width:${r[metric]/max*100}%;background:${i===0?'#087f74':'#a7ccc5'}"></div></div><div class="bar-val">${metric==='volume'?fmtInt(r[metric]):fmtMoney(r[metric]).replace(/\.\d+$/,'')}</div></div>`).join('')}
 function mixCard(){const t=breakouts.reduce((a,b)=>a+b.volume,0);return `<section class="card"><div class="card-header"><div><h3>Workload distribution</h3><div class="minor">Inpatient, outpatient and operational activity</div></div></div><div class="segmented">${breakouts.map(b=>`<div style="width:${100*b.volume/t}%;background:${b.c}" title="${b.label}: ${b.volume}"></div>`).join('')}</div><div class="mix-grid">${breakouts.map(b=>`<div class="mix-item"><span class="swatch" style="background:${b.c}"></span><span>${b.label.replace(' · employee section','')}</span><strong class="mix-num">${b.volume}</strong></div>`).join('')}</div><div class="insight">Patient-section examinations: <strong>${S.patient_volume}</strong>. Operational QFS: <strong>${S.qfs_volume}</strong>. The latter is kept separate from patient workload.</div></section>`}
 function rankings(){const sorted=[...EXAMS].sort((a,b)=>b[chartMetric]-a[chartMetric]);const top=[...EXAMS].sort((a,b)=>b.volume-a.volume)[0];const n=top?top.volume:0;const p=S.total_volume>0?100*n/S.total_volume:0;const q=S.reported_income>0?100*(top?.reported_income||0)/S.reported_income:0;return `<section class="card"><div class="card-header"><div><h3>Highest-volume examinations</h3><div class="minor">${EXAMS.length} test categories · ranked by ${chartMetric==='volume'?'workload':'illustrative amount'}</div></div><div class="switcher"><button type="button" data-chart="volume" class="${chartMetric==='volume'?'active':''}">Volume</button><button type="button" data-chart="reported_income" class="${chartMetric==='reported_income'?'active':''}">Amount</button></div></div>${barList(sorted,chartMetric,7)}<div class="insight">${top?escapeHtml(top.test):'No tests'}: <strong>${fmtInt(n)} / ${fmtInt(S.total_volume)} examinations (${p.toFixed(1)}%)</strong>, accounting for <strong>${fmtMoney(top?.reported_income||0)} (${q.toFixed(1)}%)</strong> of the illustrative amount.</div></section>`}
-function issuePreview(){return `<section class="card"><div class="card-header"><div><h3>Data checks</h3><div class="minor">Demonstration data policy</div></div><button class="sourcebtn" data-go="quality">Review all →</button></div><div class="flag-list"><div class="flag"><b>All records are synthetic</b><small>Demo</small></div><div class="flag"><b>Four reporting intervals supported</b><small class="neutral">Ready</small></div><div class="flag"><b>Original laboratory worksheets are excluded</b><small class="neutral">Isolated</small></div><div class="flag"><b>Amounts are illustrative only</b><small>Demo</small></div></div></section>`}
-function overview(){const patient=ENTRIES.filter(e=>e.section!=='operational');const ip=patient.filter(e=>e.section==='inpatient').reduce((a,e)=>a+e.volume,0);const op=patient.filter(e=>e.section==='outpatient').reduce((a,e)=>a+e.volume,0);const statShare=S.patient_volume?S.stat_volume/S.patient_volume*100:0;return `${pageIntro('Immunology / synthetic demonstration','Immunology census overview','Demo-only examination activity and illustrative amounts, computed from the four reporting intervals.')}
-<div class="warning"><span class="warn-ico">!</span><div><strong>Synthetic data — demonstration only</strong><p>This dataset is artificially generated. It must never be used as a clinical, billing, or laboratory activity report. In live mode, the source is the separate Google Sheets demo tab.</p></div></div>
-<div class="kpi-grid">${metricCard('Total demo workload',fmtInt(S.total_volume),`${fmtInt(S.patient_volume)} patient-section + ${fmtInt(S.qfs_volume)} QFS`,true)}${metricCard('Patient-section examinations',fmtInt(S.patient_volume),`Inpatient ${fmtInt(ip)} · Outpatient ${fmtInt(op)}`)}${metricCard('Illustrative amount',fmtMoney(S.reported_income),'Not actual revenue')}${metricCard('STAT share of patient work',statShare.toFixed(1)+'%',`${fmtInt(S.stat_volume)} STAT · ${fmtInt(S.routine_volume)} routine`)}</div>
-<div class="period-head"><div><strong>December 2023 demo reporting ranges</strong><div class="minor">Lab-defined periods, not separate months</div></div><button class="sourcebtn" data-go="periods">Explore intervals</button></div>${intervalPanel()}<div class="grid2">${rankings()}<div class="col-stack">${mixCard()}${issuePreview()}</div></div>
+
+function qualityQuickChecks(){
+  const counts=RECORDS.reduce((sum,row)=>sum+Number(row.count||0),0);
+  const amount=RECORDS.reduce((sum,row)=>sum+Number(row.amount||0),0);
+  const lengths=INTERVALS.map(p=>RECORDS.filter(row=>row.period===p.label).length);
+  const invalid=RECORDS.filter(row=>!checkedRecord(recordInputs(row))).length;
+  const ids=new Set(RECORDS.map(r=>[r.period,r.test,r.patientGroup,r.billing,r.priority].join('|')));
+  return [
+    {label:'Examination total reconciliation',passed:counts===S.total_volume,detail:fmtInt(counts)+' examinations'},
+    {label:'Calculated amount reconciliation',passed:Math.abs(amount-S.reported_income)<.01,detail:fmtMoney(amount)+' calculated from records'},
+    {label:'Reporting period records',passed:lengths.length===4&&lengths.every(n=>n===198),detail:lengths.join(' / ')+' records'},
+    {label:'Editable value constraints',passed:invalid===0,detail:invalid+' invalid record(s)'},
+    {label:'Unique period / examination / category keys',passed:ids.size===RECORDS.length,detail:ids.size+' distinct category rows'}
+  ];
+}
+function issuePreview(){
+ const checks=qualityQuickChecks();
+ return `<section class="card"><div class="card-header"><div><h3>Data checks</h3>
+   <div class="minor">${IS_DEMO?'Synthetic dataset':'Connected dataset'} · consistency checks</div></div>
+   <button class="sourcebtn" data-go="quality">Review all →</button></div>
+   <div class="flag-list">${checks.map(c=>`<div class="flag"><b>${escapeHtml(c.label)}</b>
+   <small class="${c.passed?'neutral':''}">${c.passed?'Pass':'Review'}</small></div>`).join('')}</div>
+   <p class="fine">Checks compare the loaded record values. They do not replace a live worksheet schema scan.</p>
+ </section>`;
+}
+function overview(){const patient=ENTRIES.filter(e=>e.section!=='operational');const ip=patient.filter(e=>e.section==='inpatient').reduce((a,e)=>a+e.volume,0);const op=patient.filter(e=>e.section==='outpatient').reduce((a,e)=>a+e.volume,0);const statShare=S.patient_volume?S.stat_volume/S.patient_volume*100:0;return `${pageIntro(IS_DEMO?'Immunology / synthetic demonstration':'Immunology / census data','Immunology census overview',IS_DEMO?'Demo-only examination activity and illustrative amounts.':'Examination activity and calculated amounts for four reporting intervals.')}
+${IS_DEMO?'<div class="warning"><span class="warn-ico">!</span><div><strong>Synthetic data — demonstration only</strong><p>Values shown here are artificially generated for testing.</p></div></div>':''}
+<div class="kpi-grid">${metricCard(IS_DEMO?'Total demo workload':'Total workload',fmtInt(S.total_volume),`${fmtInt(S.patient_volume)} patient-section + ${fmtInt(S.qfs_volume)} QFS`,true)}${metricCard('Patient-section examinations',fmtInt(S.patient_volume),`Inpatient ${fmtInt(ip)} · Outpatient ${fmtInt(op)}`)}${metricCard(IS_DEMO?'Illustrative amount':'Calculated amount',fmtMoney(S.reported_income),'Count × listed rate; not cash received')}${metricCard('STAT share of patient work',statShare.toFixed(1)+'%',`${fmtInt(S.stat_volume)} STAT · ${fmtInt(S.routine_volume)} routine`)}</div>
+<div class="period-head"><div><strong>December 2023 reporting ranges</strong><div class="minor">Lab-defined periods, not separate months</div></div><button class="sourcebtn" data-go="periods">Explore intervals</button></div>${intervalPanel()}<div class="grid2">${rankings()}<div class="col-stack">${mixCard()}${issuePreview()}</div></div>
 <div class="section-heading">Service breakdown</div><div class="card table-wrap">${mixTable()}</div>`}
 function mixTable(){let rows=breakouts.map(b=>`<tr><td><strong>${escapeHtml(b.label)}</strong></td><td class="right">${fmtInt(b.volume)}</td><td class="right">${S.total_volume?(b.volume/S.total_volume*100).toFixed(1):'0.0'}%</td><td class="right">${fmtMoney(b.income)}</td></tr>`).join('');return `<table class="t"><thead><tr><th>Source category</th><th class="right">Examinations</th><th class="right">% of total</th><th class="right">Illustrative amount</th></tr></thead><tbody>${rows}<tr style="background:#f6faf8"><td><strong>Total</strong></td><td class="right"><strong>${fmtInt(S.total_volume)}</strong></td><td class="right"><strong>100.0%</strong></td><td class="right"><strong>${fmtMoney(S.reported_income)}</strong></td></tr></tbody></table>`}
 function filteredExams(){let a=[...EXAMS].filter(x=>x.test.toLowerCase().includes(tableQuery.toLowerCase()));let key=tableSort;return a.sort((a,b)=>tableSortDir==='desc'?(b[key]-a[key]):(a[key]-b[key]));}
-function examTable(){let x=filteredExams();return `<div class="card"><div class="controlbar"><input class="search" id="examSearch" placeholder="Search examination (e.g. CRP, CD4, HBsAg)" aria-label="Search examination" value="${escapeHtml(tableQuery)}"><select class="select" id="sortExams"><option value="volume" ${tableSort==='volume'?'selected':''}>Sort: workload</option><option value="reported_income" ${tableSort==='reported_income'?'selected':''}>Sort: income</option><option value="patient_volume" ${tableSort==='patient_volume'?'selected':''}>Sort: patient activity</option></select><span class="smalltag">${x.length} examinations</span></div><div class="table-wrap"><table class="t"><thead><tr><th>Examination</th><th class="right">All activity</th><th class="right">IP/OP</th><th class="right">STAT</th><th class="right">Routine</th><th class="right">QFS</th><th class="right">Illustrative amount</th></tr></thead><tbody>${x.map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||`<tr><td colspan="7" class="empty">No matching examinations.</td></tr>`}</tbody></table></div><div class="fine" style="margin-top:17px">Select an examination to view synthetic category and priority breakdowns.</div></div>`}
-function examinations(){return `${pageIntro('Examination register / '+EXAMS.length+' test categories','Examination explorer','Search, rank and drill into the demo examination data. These are simulated records.')}${examTable()}`}
+function examTable(){let x=filteredExams();return `<div class="card"><div class="controlbar"><input class="search" id="examSearch" placeholder="Search examination (e.g. CRP, CD4, HBsAg)" aria-label="Search examination" value="${escapeHtml(tableQuery)}"><select class="select" id="sortExams"><option value="volume" ${tableSort==='volume'?'selected':''}>Sort: workload</option><option value="reported_income" ${tableSort==='reported_income'?'selected':''}>Sort: income</option><option value="patient_volume" ${tableSort==='patient_volume'?'selected':''}>Sort: patient activity</option></select><span class="smalltag">${x.length} examinations</span></div><div class="table-wrap"><table class="t"><thead><tr><th>Examination</th><th class="right">All activity</th><th class="right">IP/OP</th><th class="right">STAT</th><th class="right">Routine</th><th class="right">QFS</th><th class="right">Illustrative amount</th></tr></thead><tbody>${x.map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||`<tr><td colspan="7" class="empty">No matching examinations.</td></tr>`}</tbody></table></div><div class="fine" style="margin-top:17px">Select an examination to view category and priority breakdowns.</div></div>`}
+function examinations(){return `${pageIntro('Examination register / '+EXAMS.length+' test categories','Examination explorer',IS_DEMO?'Explore synthetic examination data.':'Search and examine the current census data.')}${examTable()}`}
 function segmentCard(title,items,metric){let total=items.reduce((a,r)=>a+r[metric],0);return `<section class="card"><div class="card-header"><div><h3>${title}</h3><div class="minor">${metric==='volume'?'Examination counts':'Source-illustrative amount'}</div></div></div>${barList(items,metric,8)}<div class="insight">Total: <strong>${metric==='volume'?fmtInt(total):fmtMoney(total)}</strong></div></section>`}
-function breakdown(){let services=breakouts.map(b=>({label:b.label,volume:b.volume,reported_income:b.income}));let urgent=[{label:'STAT',volume:S.stat_volume},{label:'Routine',volume:S.routine_volume}];let pay=['CHA','PAY','QFS'].map(x=>{let es=ENTRIES.filter(e=>e.payer===x);return {label:x,volume:es.reduce((a,e)=>a+e.volume,0),reported_income:es.reduce((a,e)=>a+e.reported_income,0)}});const ip=ENTRIES.filter(e=>e.section==='inpatient').reduce((a,e)=>a+e.volume,0),op=ENTRIES.filter(e=>e.section==='outpatient').reduce((a,e)=>a+e.volume,0);return `${pageIntro('Service analysis / synthetic December 2023','Workload and illustrative amounts','Inpatient/outpatient, billing and priority composition for demo data.')}
+function breakdown(){let services=breakouts.map(b=>({label:b.label,volume:b.volume,reported_income:b.income}));let urgent=[{label:'STAT',volume:S.stat_volume},{label:'Routine',volume:S.routine_volume}];let pay=['CHA','PAY','QFS'].map(x=>{let es=ENTRIES.filter(e=>e.payer===x);return {label:x,volume:es.reduce((a,e)=>a+e.volume,0),reported_income:es.reduce((a,e)=>a+e.reported_income,0)}});const ip=ENTRIES.filter(e=>e.section==='inpatient').reduce((a,e)=>a+e.volume,0),op=ENTRIES.filter(e=>e.section==='outpatient').reduce((a,e)=>a+e.volume,0);return `${pageIntro(IS_DEMO?'Service analysis / synthetic December 2023':'Service analysis / December 2023','Workload and calculated amounts',IS_DEMO?'Demonstration figures only.':'Inpatient, outpatient, billing and priority composition.')}
 <div class="kpi-grid">${metricCard('Inpatient activity',fmtInt(ip),`${(ip/Math.max(1,S.total_volume)*100).toFixed(1)}% of demo tests`,true)}${metricCard('Outpatient activity',fmtInt(op),`${(op/Math.max(1,S.total_volume)*100).toFixed(1)}% of demo tests`)}${metricCard('STAT patient tests',fmtInt(S.stat_volume),`${(S.stat_volume/Math.max(1,S.patient_volume)*100).toFixed(1)}% of patient tests`)}${metricCard('Routine patient tests',fmtInt(S.routine_volume),`${(S.routine_volume/Math.max(1,S.patient_volume)*100).toFixed(1)}% of patient tests`)}</div>
 <div class="grid2">${segmentCard('Workload by category',services,'volume')}${segmentCard('Illustrative amount by category',services,'reported_income')}</div><div class="grid2">${segmentCard('Patient examination priority',urgent,'volume')}${segmentCard('Billing categories (demo codes)',pay,'volume')}</div><div class="section-heading">Detailed category totals</div><div class="card table-wrap">${mixTable()}</div>`}
-function quality(){return `${pageIntro('Governance / synthetic data','Data quality review','Synthetic records are deliberately isolated from real census worksheets.')}
-<div class="kpi-grid">${metricCard('Demo count reconciliation','Pass',`${fmtInt(S.total_volume)} generated tests`,true)}${metricCard('Source isolation','Enabled','DEMO - Weekly Census tab only')}${metricCard('Test categories',fmtInt(EXAMS.length),'Simulated examinations')}${metricCard('Reporting periods','4','December 2023 demo')}</div>
-<div class="warning"><span class="warn-ico">!</span><div><strong>Never interpret demo values as real pathology census data.</strong><p>Test counts and monetary amounts are artificial. Source connection requires Google API credentials on a private PHP server.</p></div></div>
-<div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`}
-function showExam(name){const t=EXAMS.find(x=>x.test===name);if(!t)return;const es=ENTRIES.filter(e=>e.test===name && e.volume>0);document.getElementById('drawer').innerHTML=`<button class="close" id="closeDrawer">Close ×</button><p class="eyebrow">Synthetic examination detail</p><h2 style="font-size:25px;letter-spacing:-.7px;margin:0 0 11px">${escapeHtml(name)}</h2><p class="fine">December 2023 demo · test counts, not unique patients</p><div class="mini-grid" style="margin:18px 0">${[['All activity',t.volume],['Patient-section',t.patient_volume],['STAT',t.stat_volume],['Illustrative amount',fmtMoney(t.reported_income)]].map(k=>`<div class="mini"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div><h3 style="font-size:13px;margin:21px 0 10px">Demo category detail</h3><div class="table-wrap"><table class="t"><thead><tr><th>Section · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead><tbody>${es.map(e=>`<tr><td>${e.section==='inpatient'?'IP':e.section==='outpatient'?'OP':'Other'} · ${escapeHtml(e.channel)}</td><td class="right">${e.volume}</td><td class="right">${fmtMoney(e.reported_income)}</td>${WRITES_ENABLED?`<td><button class="sourcebtn editdemo" data-edit-row="${e.source_rows[selectedInterval]||''}" data-period="${INTERVALS[selectedInterval].label}" data-test="${escapeHtml(e.test)}" data-old="${e.weeks[selectedInterval]}">Edit selected interval</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4">No demo examinations</td></tr>'}</tbody></table></div><p class="fine" style="margin-top:18px">Synthetic demo data only. Edit buttons, when enabled, update only the demo worksheet.</p>`;
-document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').classList.add('show');document.getElementById('closeDrawer').onclick=closeDrawer;
-if(WRITES_ENABLED)document.querySelectorAll('.editdemo').forEach(b=>b.onclick=async()=>{if(!b.dataset.editRow)return;const n=prompt('New demo count for '+b.dataset.period+' (currently '+b.dataset.old+'):',b.dataset.old);if(n===null)return;const v=Number(n);if(!Number.isInteger(v)||v<0||v>100000){alert('Enter a non-negative whole number.');return;}try{const resp=await fetch('api/update.php',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({sheetRow:Number(b.dataset.editRow),count:v,expectedCount:Number(b.dataset.old),period:b.dataset.period,test:b.dataset.test,csrf:CSRF})});const result=await resp.json();if(!resp.ok||!result.success)throw new Error(result.error||'Update failed');location.reload();}catch(e){alert(e.message);}});
+
+function quality(){
+ const checks=qualityQuickChecks();
+ const passed=checks.filter(c=>c.passed).length;
+ return `${pageIntro(IS_DEMO?'Governance / demonstration data':'Governance / census data','Data quality review',
+   'Checks of totals, record categories and reporting intervals from the currently loaded data.')}
+ <div class="kpi-grid">
+   ${metricCard('Checks passed',passed+' / '+checks.length,'Calculated against loaded data',true)}
+   ${metricCard('Total examinations',fmtInt(S.total_volume),'Summed from records')}
+   ${metricCard('Test categories',fmtInt(EXAMS.length),'Examination names')}
+   ${metricCard('Reporting intervals','4','December 2023')}
+ </div>
+ ${IS_DEMO?'<div class="warning"><span class="warn-ico">!</span><div><strong>Sample data only</strong><p>These records are generated for testing, not for institutional reporting.</p></div></div>':''}
+ ${checks.map(check=>`<section class="card quality-card">
+  <div class="severity ${check.passed?'low':'med'}"></div>
+  <div><b>${escapeHtml(check.label)} — ${check.passed?'Pass':'Review'}</b>
+  <p>${escapeHtml(check.detail)}</p></div></section>`).join('')}
+ <p class="fine">These checks do not inspect remote worksheet formulas or structural changes. Source-schema protection remains enforced by the PHP batch-write planner when saving.</p>
+ <div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`;
 }
-function closeDrawer(){document.getElementById('backdrop').classList.remove('show');document.getElementById('drawer').classList.remove('show')}
-document.getElementById('backdrop').addEventListener('click',closeDrawer);document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+let drawerReturnFocus=null,drawerStartingValues=null;
+function recordFormDirty(form,original){return !!(form&&original&&['test','patientGroup','billing','priority','count','rate'].some(field=>{const element=form.elements.namedItem(field);if(!element)return false;const value=['count','rate'].includes(field)?Number(element.value):element.value.trim();return original[field]!==value;}));}
+function activateDrawer(title){
+  const drawer=document.getElementById('drawer');
+  if(!drawer.innerHTML.trim()){
+    drawer.innerHTML='<div class="drawer-head"><button type="button" class="close" id="closeDrawer">Close ×</button><h2 class="drawer-title">Details unavailable</h2></div><div class="drawer-empty" role="status">The requested details could not be displayed. Refresh the page and try again.</div>';
+    drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
+  }
+  if(!drawer.classList.contains('show'))drawerReturnFocus=document.activeElement;
+  drawer.setAttribute('role','dialog');
+  drawer.setAttribute('aria-modal','true');
+  drawer.setAttribute('aria-label',title);
+  drawer.setAttribute('aria-hidden','false');
+  drawer.scrollTop=0;
+  document.getElementById('backdrop').classList.add('show');
+  drawer.classList.add('show');
+  const button=drawer.querySelector('#closeDrawer');
+  if(button)button.focus({preventScroll:true});
+}
+function examinationIntervalRows(name,index=selectedInterval){
+  const period=INTERVALS[Number(index)];
+  if(!period)return [];
+  return RECORDS.filter(row=>row.test===name&&row.period===period.label);
+}
+function examDetailMarkup(name,index=selectedInterval){
+  const test=EXAMS.find(x=>x.test===name);
+  const period=INTERVALS[Number(index)];
+  if(!test||!period)return `<div class="drawer-head"><button type="button" id="closeDrawer" class="close">Close ×</button>
+    <h2 class="drawer-title">Details unavailable</h2></div>
+    <div class="drawer-empty" role="status">No matching examination or reporting period is available. Refresh the dashboard and retry.</div>`;
+  const rows=examinationIntervalRows(name,index);
+  const count=rows.reduce((sum,row)=>sum+Number(row.count||0),0);
+  const amount=rows.reduce((sum,row)=>sum+Number(row.amount||0),0);
+  return `<div class="drawer-head"><button type="button" id="closeDrawer" class="close">Close ×</button>
+    <p class="eyebrow">Examination detail</p><h2 class="drawer-title">${escapeHtml(name)}</h2>
+    <p class="fine">December 2023 · Counts are examinations, not unique patients</p></div>
+    <div class="mini-grid" style="margin:14px 0">
+      <div class="mini"><small>December total</small><b>${fmtInt(test.volume)}</b></div>
+      <div class="mini"><small>Calculated December amount</small><b>${fmtMoney(test.reported_income)}</b></div>
+      <div class="mini"><small>Selected interval count</small><b>${fmtInt(count)}</b></div>
+      <div class="mini"><small>Interval amount</small><b>${fmtMoney(amount)}</b></div>
+    </div>
+    <label class="drawer-period-picker" for="drawerExamPeriod">Reporting interval
+      <select id="drawerExamPeriod">${INTERVALS.map((x,i)=>`<option value="${i}" ${i===Number(index)?'selected':''}>${escapeHtml(x.label)}, 2023</option>`).join('')}</select>
+    </label>
+    <h3 style="font-size:13px;margin:17px 0 9px">Source records · ${escapeHtml(period.label)}</h3>
+    ${rows.length?`<div class="drawer-records-table"><table class="t">
+      <thead><tr><th>Group · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead>
+      <tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.patientGroup)} · ${escapeHtml(r.billing)} · ${escapeHtml(r.priority)}</td>
+      <td class="right">${fmtInt(r.count)}</td><td class="right">${fmtMoney(r.amount)}</td>
+      ${WRITES_ENABLED?`<td><button class="sourcebtn" type="button" data-drawer-edit-row="${r.sheetRow}">Edit inputs</button></td>`:''}</tr>`).join('')}
+      </tbody></table></div>`:
+      '<div class="drawer-empty" role="status"><strong>No source rows in this interval.</strong>Choose another interval above to view available records. There is no edit action for this period.</div>'}
+    <p class="fine" style="margin-top:17px">Edits, when enabled, are staged and saved only to the configured census worksheet.</p>`;
+}
+function showExam(name,index=selectedInterval){
+  if(batchSaving||batchUnconfirmed)return;
+  if(!INTERVALS[Number(index)])index=selectedInterval;
+  const drawer=document.getElementById('drawer');
+  drawer.innerHTML=examDetailMarkup(name,index);
+  activateDrawer('Examination detail: '+name);
+  drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
+  const picker=drawer.querySelector('#drawerExamPeriod');
+  if(picker)picker.addEventListener('change',e=>{
+    const next=Number(e.target.value);if(INTERVALS[next])showExam(name,next);
+  });
+  drawer.querySelectorAll('[data-drawer-edit-row]').forEach(button=>
+    button.addEventListener('click',()=>editSourceRecord(Number(button.dataset.drawerEditRow))));
+}
+function closeDrawer(force=false){
+  const drawer=document.getElementById('drawer');
+  const form=drawer.querySelector('#phpEditForm');
+  if(force!==true&&form&&recordFormDirty(form,drawerStartingValues)&&!confirm('Discard unsaved record changes?'))return false;
+  document.getElementById('backdrop').classList.remove('show');
+  drawer.classList.remove('show');
+  drawer.setAttribute('aria-hidden','true');
+  drawer.removeAttribute('aria-label');
+  drawer.removeAttribute('aria-modal');
+  drawer.innerHTML='';
+  drawerStartingValues=null;
+  if(drawerReturnFocus&&drawerReturnFocus.isConnected&&typeof drawerReturnFocus.focus==='function'){
+    drawerReturnFocus.focus({preventScroll:true});
+  }
+  drawerReturnFocus=null;
+}
+document.getElementById('backdrop').addEventListener('click',closeDrawer);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('drawer').classList.contains('show'))closeDrawer()});
 
 const INTERVALS=[{label:'Dec 1–7',date:'2023-12-01',n:0},{label:'Dec 8–14',date:'2023-12-08',n:1},{label:'Dec 15–21',date:'2023-12-15',n:2},{label:'Dec 22–31',date:'2023-12-22',n:3}];
 let selectedInterval=0, periodSection='all';
 function periodEntries(){return ENTRIES.filter(e=>periodSection==='all' || e.section===periodSection)}
 function periodSums(rows){return INTERVALS.map((it,i)=>rows.reduce((n,e)=>n+(Number(e.weeks[i])||0),0))}
 function periodTestRows(rows){let a=EXAMS.map(x=>({test:x.test, weeks:INTERVALS.map((it,i)=>rows.filter(e=>e.test===x.test).reduce((n,e)=>n+(Number(e.weeks[i])||0),0))}));return a.filter(x=>x.weeks.some(n=>n>0)).sort((a,b)=>b.weeks.reduce((s,n)=>s+n,0)-a.weeks.reduce((s,n)=>s+n,0))}
-function intervalPanel(){const sums=periodSums(periodEntries());return `<div class="interval-grid">${INTERVALS.map((it,i)=>`<button class="interval-card ${i===selectedInterval?'is-selected':''}" data-interval="${i}" aria-pressed="${i===selectedInterval}"><div class="interval-title">${it.label}, 2023</div><div class="interval-value">${fmtInt(sums[i])}</div><div class="interval-caption">demo examinations</div><div class="interval-pill">Synthetic · not clinical</div></button>`).join('')}</div>`}
-function periods(){const rows=periodEntries(),totals=periodSums(rows),tests=periodTestRows(rows),total=totals.reduce((a,b)=>a+b,0),selected=INTERVALS[selectedInterval];return `${pageIntro('Synthetic census / December 2023 demo','Reporting intervals','Four lab-defined date ranges; synthetic values are for interaction testing, not a verified trend.')}
-<div class="period-note"><b>Synthetic test dataset:</b> All four December reporting intervals contain artificial records. The final range covers ten days, so raw counts are not normalized for duration.</div>
-<div class="period-head"><div><strong>December 2023 · demo census periods</strong><div class="minor">Select an interval to inspect examination detail</div></div><span class="smalltag">Synthetic month</span></div>
+function intervalPanel(){const sums=periodSums(periodEntries());return `<div class="interval-grid">${INTERVALS.map((it,i)=>`<button class="interval-card ${i===selectedInterval?'is-selected':''}" data-interval="${i}" aria-pressed="${i===selectedInterval}"><div class="interval-title">${it.label}, 2023</div><div class="interval-value">${fmtInt(sums[i])}</div><div class="interval-caption">demo examinations</div><div class="interval-pill">${IS_DEMO?'Synthetic · not clinical':'Recorded'}</div></button>`).join('')}</div>`}
+function periods(){const rows=periodEntries(),totals=periodSums(rows),tests=periodTestRows(rows),total=totals.reduce((a,b)=>a+b,0),selected=INTERVALS[selectedInterval];return `${pageIntro(IS_DEMO?'Synthetic census / December 2023':'Immunology census / December 2023','Reporting intervals',IS_DEMO?'Synthetic values for interaction testing.':'Four reporting intervals; totals are not normalized by interval length.')}
+<div class="period-note"><b>Reporting intervals:</b> The final range covers ten days, so raw counts are not normalized by interval length.</div>
+<div class="period-head"><div><strong>December 2023 · census periods</strong><div class="minor">Select an interval to inspect examination detail</div></div><span class="smalltag">Synthetic month</span></div>
 <div class="period-view"><span class="minor">Activity source:</span>${[{id:'all',txt:'All categories'},{id:'inpatient',txt:'Inpatient'},{id:'outpatient',txt:'Outpatient'},{id:'operational',txt:'Employee / QC'}].map(o=>`<button data-period-section="${o.id}" class="${periodSection===o.id?'active':''}">${o.txt}</button>`).join('')}</div>
 ${intervalPanel()}
-<div class="grid2"><section class="card"><div class="card-header"><div><h3>${selected.label} · examination detail</h3><div class="minor">${fmtInt(totals[selectedInterval])} demo examinations in current category</div></div></div><div class="insight">This interval contains artificial test counts for the dashboard demonstration.</div><div class="table-wrap"><table class="t"><thead><tr><th>Examination</th><th class="right">Selected interval</th><th class="right">December total</th></tr></thead><tbody>${tests.map(t=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(t.test)}">${escapeHtml(t.test)}</button></td><td class="right ${t.weeks[selectedInterval]?'period-on':''}">${fmtInt(t.weeks[selectedInterval])}</td><td class="right">${fmtInt(t.weeks.reduce((a,b)=>a+b,0))}</td></tr>`).join('')||'<tr><td colspan="3">No test entries</td></tr>'}</tbody></table></div></section>
-<section class="card"><div class="card-header"><div><h3>Demo reporting matrix</h3><div class="minor">All four lab-defined date ranges</div></div></div><div class="table-wrap"><table class="t period-table"><thead><tr><th>Period</th><th class="right">Count</th><th>Status</th></tr></thead><tbody>${INTERVALS.map((it,i)=>`<tr><td>${it.label}</td><td class="right">${fmtInt(totals[i])}</td><td>Synthetic</td></tr>`).join('')}<tr><td><b>December total</b></td><td class="right"><b>${fmtInt(total)}</b></td><td>Calculated</td></tr></tbody></table></div><div class="period-note">The periods are not equal length. For meaningful trend analysis, use verified real source data and normalize by day.</div></section></div>`}
+<div class="grid2"><section class="card"><div class="card-header"><div><h3>${selected.label} · examination detail</h3><div class="minor">${fmtInt(totals[selectedInterval])} demo examinations in current category</div></div></div><div class="insight">${IS_DEMO?'This interval contains artificial test counts.':'Examination counts for the selected reporting interval.'}</div><div class="table-wrap"><table class="t"><thead><tr><th>Examination</th><th class="right">Selected interval</th><th class="right">December total</th></tr></thead><tbody>${tests.map(t=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(t.test)}">${escapeHtml(t.test)}</button></td><td class="right ${t.weeks[selectedInterval]?'period-on':''}">${fmtInt(t.weeks[selectedInterval])}</td><td class="right">${fmtInt(t.weeks.reduce((a,b)=>a+b,0))}</td></tr>`).join('')||'<tr><td colspan="3">No test entries</td></tr>'}</tbody></table></div></section>
+<section class="card"><div class="card-header"><div><h3>Reporting matrix</h3><div class="minor">All four lab-defined date ranges</div></div></div><div class="table-wrap"><table class="t period-table"><thead><tr><th>Period</th><th class="right">Count</th><th>Status</th></tr></thead><tbody>${INTERVALS.map((it,i)=>`<tr><td>${it.label}</td><td class="right">${fmtInt(totals[i])}</td><td>${IS_DEMO?'Synthetic':'Recorded'}</td></tr>`).join('')}<tr><td><b>December total</b></td><td class="right"><b>${fmtInt(total)}</b></td><td>Calculated</td></tr></tbody></table></div><div class="period-note">The periods are not equal length. For meaningful trend analysis, use verified real source data and normalize by day.</div></section></div>`}
 
 
 const editFields=['test','patientGroup','billing','priority','count','rate'];
@@ -195,6 +346,7 @@ function editSourceRecord(rowNumber){
   const record=RECORDS.find(r=>r.sheetRow===rowNumber);
   if(!record)return;
   const starting={...(stagedChanges.get(rowNumber)?.values||recordInputs(record))};
+  drawerStartingValues={...starting};
   const combos={Inpatient:['CHA','PAY'],Outpatient:['CHA','PAY'],Employee:['QFS']};
   const drawer=document.getElementById('drawer');
   drawer.innerHTML=`<button type="button" class="close" id="closeDrawer">Close ×</button>
@@ -213,7 +365,7 @@ function editSourceRecord(rowNumber){
         <button type="submit" class="batch-save">Stage change</button></div>
       <div id="phpEditError" class="fine full" role="alert"></div>
     </form>`;
-  drawer.classList.add('show');document.getElementById('backdrop').classList.add('show');
+  activateDrawer('Edit census record: '+record.test);
   drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
   drawer.querySelector('#cancelRecord').addEventListener('click',closeDrawer);
   const form=drawer.querySelector('#phpEditForm');
@@ -242,7 +394,7 @@ function editSourceRecord(rowNumber){
     const original=recordInputs(record);
     if(editFields.every(f=>v[f]===original[f]))stagedChanges.delete(rowNumber);
     else stagedChanges.set(rowNumber,{sheetRow:rowNumber,period:record.period,expected:original,values:v});
-    closeDrawer();batchNotice='Edit staged. Continue selecting records or Save all.';
+    closeDrawer(true);batchNotice='Edit staged. Continue selecting records or Save all.';
     render();
   });
 }
@@ -257,7 +409,7 @@ function reviewPHPBatch(){
       <div>${editFields.filter(f=>c.expected[f]!==c.values[f]).map(f=>`<span>${escapeHtml(f)}: ${escapeHtml(c.expected[f])} → <b>${escapeHtml(c.values[f])}</b></span>`).join('')}</div>
       <button class="sourcebtn" data-drop-staged="${c.sheetRow}">Remove</button></div>`).join('')}
     <button class="batch-save" id="submitReviewedBatch">Save all ${changes.length} records</button>`;
-  drawer.classList.add('show');document.getElementById('backdrop').classList.add('show');
+  activateDrawer('Review staged changes');
   drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
   drawer.querySelectorAll('[data-drop-staged]').forEach(b=>b.addEventListener('click',()=>{
     stagedChanges.delete(Number(b.dataset.dropStaged));closeDrawer();render();if(stagedChanges.size)reviewPHPBatch();
@@ -287,35 +439,91 @@ async function savePHPBatch(){
   }
 }
 
-let reportPeriod='all',reportDetail=false;
+
+let reportPeriod='all',reportDetail=false,reportAmounts=false,reportSecondRole='Noted by';
+const reportRoles=['Noted by','Reviewed by','Approved by'];
+const reportSigners={
+  prepared:{name:'',position:'',date:''},
+  noted:{name:'',position:'',date:''}
+};
+function reportValidDate(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+  const date=new Date(value+'T12:00:00+08:00');
+  return !Number.isNaN(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
+function reportSignersReady(){
+  return ['prepared','noted'].every(role=>{
+    const value=reportSigners[role];
+    return value.name.trim()!==''&&value.position.trim()!==''&&reportValidDate(value.date);
+  });
+}
+function signerInputs(role){
+  const person=reportSigners[role];
+  return ['name','position','date'].map(field=>{
+    const type=field==='date'?'date':'text';
+    const label={name:'Full name',position:'Position / designation',date:'Date'}[field];
+    return `<label for="report-${role}-${field}">${label}
+       <input id="report-${role}-${field}" name="${role}_${field}" data-report-signer="${role}"
+         data-report-field="${field}" type="${type}" value="${escapeHtml(person[field])}" maxlength="120" required>
+     </label>`;
+  }).join('');
+}
+function reportUpdateButton(){
+  const button=document.querySelector('[data-report-submit]');
+  const hasPending=stagedChanges.size>0||batchUnconfirmed||batchSaving;
+  if(button)button.disabled=hasPending||!reportSignersReady();
+  const hint=document.getElementById('reportHint');
+  if(hint)hint.textContent=reportSignersReady()
+    ?'Completed names, positions and dates will appear on the printed report.'
+    :'Complete both signatories before generating the report.';
+}
 function reports(){
-  const periodMeta=[{label:'Full coverage — Dec 1–31, 2023',id:'all'},
+  const periods=[{label:'December 1–31, 2023',id:'all'},
     ...INTERVALS.map((p,i)=>({label:p.label+', 2023',id:String(i)}))];
-  const chosen=reportPeriod==='all'?null:INTERVALS[Number(reportPeriod)]?.label;
-  const rows=RECORDS.filter(r=>chosen===null||r.period===chosen);
-  const count=rows.reduce((total,r)=>total+Number(r.count||0),0);
-  const amount=rows.reduce((total,r)=>total+Number(r.amount||0),0);
+  const selected=reportPeriod==='all'?null:INTERVALS[Number(reportPeriod)]?.label;
+  const rows=RECORDS.filter(r=>selected===null||r.period===selected);
+  const count=rows.reduce((sum,r)=>sum+Number(r.count||0),0);
+  const tests=new Set(rows.map(r=>r.test)).size;
   const hasPending=stagedChanges.size>0||batchUnconfirmed||batchSaving;
   return `${pageIntro('Reporting / printable documentation','A4 formal census report',
-    'Create a formal, print-ready report for one reporting interval or the complete December 2023 coverage.')}
+    'Generate a departmental laboratory census for a selected reporting period.')}
     <div class="card report-form">
-      ${hasPending?'<div class="alertline" role="alert">Staged or uncertain edits must be saved and reconciled before creating a new report. Generated reports include only saved source values.</div>':''}
-      <p class="fine">Reports are generated from the current dataset with full examination-level totals, patient-group, priority and billing breakdowns. A detailed category appendix is optional.</p>
-      <form method="get" action="report.php">
-        <label for="reportPeriod">Reporting coverage</label>
+      ${hasPending?'<div class="alertline" role="alert">Staged or uncertain edits must be reconciled before a new report is generated.</div>':''}
+      <p class="fine">Select the reporting period, optional category appendix, and signatory information. Calculated amounts are excluded by default.</p>
+      <form method="post" action="report.php">
+        <label for="reportPeriod">Reporting period</label>
         <select name="period" class="select" id="reportPeriod">
-          ${periodMeta.map(p=>`<option value="${p.id}" ${reportPeriod===p.id?'selected':''}>${escapeHtml(p.label)}</option>`).join('')}
+          ${periods.map(p=>`<option value="${p.id}" ${reportPeriod===p.id?'selected':''}>${escapeHtml(p.label)}</option>`).join('')}
         </select>
         <label class="report-appendix"><input type="checkbox" name="detail" value="1" id="reportDetail" ${reportDetail?'checked':''}>
-          Include full category-detail appendix (more A4 pages)</label>
-        <div class="report-preview-grid">
-          <div><span>Records in coverage</span><b>${fmtInt(rows.length)}</b></div>
-          <div><span>Examinations</span><b>${fmtInt(count)}</b></div>
-          <div><span>Calculated amount</span><b>${fmtMoney(amount)}</b></div>
+          Include full category-detail appendix (additional A4 pages)</label>
+        <label class="report-appendix"><input type="checkbox" name="amounts" value="1" id="reportAmounts" ${reportAmounts?'checked':''}>
+          Include calculated amounts based on listed rates</label>
+        <div class="report-signatures-form">
+          <h3>Report signatories</h3>
+          <div class="report-signature-grid">
+            <fieldset><legend>Prepared by</legend>${signerInputs('prepared')}</fieldset>
+            <fieldset><legend>Second signatory</legend>
+              <label for="reportSecondRole">Report label
+                <select id="reportSecondRole" name="second_role">
+                  ${reportRoles.map(role=>`<option value="${role}" ${reportSecondRole===role?'selected':''}>${role}</option>`).join('')}
+                </select>
+              </label>
+              ${signerInputs('noted')}
+            </fieldset>
+          </div>
+          <p id="reportHint" class="report-hint">
+            ${reportSignersReady()?'Completed names, positions and dates will appear on the printed report.':'Complete both signatories before generating the report.'}
+          </p>
         </div>
-        <button type="submit" class="report-primary" ${hasPending?'disabled':''}>Generate A4 report</button>
+        <div class="report-preview-grid">
+          <div><span>Reporting intervals</span><b>${reportPeriod==='all'?'4':'1'}</b></div>
+          <div><span>Examinations</span><b>${fmtInt(count)}</b></div>
+          <div><span>Test categories</span><b>${fmtInt(tests)}</b></div>
+        </div>
+        <button type="submit" class="report-primary" data-report-submit ${hasPending||!reportSignersReady()?'disabled':''}>Generate A4 report</button>
       </form>
-      <p class="fine">The report opens as an authenticated, printable A4 page. Select Print / Save PDF to create a PDF on your device. Sign-off fields are intentionally blank until verified.</p>
+      <p class="fine">The report opens in this tab. Every page includes the original-color LCP letterhead, black Arial text and the required signatory information.</p>
     </div>`;
 }
 function render(){document.getElementById('content').innerHTML=batchBar()+({overview,periods,examinations,breakdown,records,reports,quality})[activePage]();}
@@ -329,7 +537,16 @@ if(e.target.closest('[data-clear-batch]')){
 }
 if(e.target.closest('[data-reconcile-batch]')){location.reload();return;}
 const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
-document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='recordSearch'){
+document.getElementById('content').addEventListener('input',e=>{
+ const signer=e.target.closest('[data-report-signer]');
+ if(signer){
+  const role=signer.dataset.reportSigner,field=signer.dataset.reportField;
+  if(['prepared','noted'].includes(role)&&['name','position','date'].includes(field)){
+   reportSigners[role][field]=signer.value;reportUpdateButton();
+  }
+  return;
+ }
+ if(e.target.id==='recordSearch'){
  const value=e.target.value,pos=e.target.selectionStart;recordSearch=value;recordPage=0;render();
  const input=document.getElementById('recordSearch');if(input){input.focus();input.setSelectionRange(pos,pos);}return;}
 if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
@@ -339,9 +556,19 @@ if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render
 if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();return;}
 if(e.target.id==='reportPeriod'){reportPeriod=e.target.value;render();return;}
 if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}
+ if(e.target.id==='reportAmounts'){reportAmounts=e.target.checked;render();return;}
+ if(e.target.id==='reportSecondRole'){if(reportRoles.includes(e.target.value))reportSecondRole=e.target.value;render();return;}
+ if(e.target.matches('[data-report-signer]')){
+  const role=e.target.dataset.reportSigner,field=e.target.dataset.reportField;
+  if(['prepared','noted'].includes(role)&&['name','position','date'].includes(field)){
+   reportSigners[role][field]=e.target.value;reportUpdateButton();
+  }
+  return;
+ }
 if(e.target.id==='sortExams'){tableSort=e.target.value;render()}
 });render();
 window.addEventListener('beforeunload',event=>{
- if(stagedChanges.size>0||batchSaving){event.preventDefault();event.returnValue='';}
+ const form=document.getElementById('phpEditForm');
+ if(stagedChanges.size>0||batchSaving||recordFormDirty(form,drawerStartingValues)){event.preventDefault();event.returnValue='';}
 });
 </script></body></html>

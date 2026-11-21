@@ -60,8 +60,9 @@ final class ReportBuilder
         }
         ksort($examinations, SORT_NATURAL|SORT_FLAG_CASE);
         ksort($categories, SORT_NATURAL|SORT_FLAG_CASE);
-        foreach ([$groups, $billing, $priorities] as &$map) {ksort($map,SORT_NATURAL|SORT_FLAG_CASE);}
-        unset($map);
+        ksort($groups, SORT_NATURAL|SORT_FLAG_CASE);
+        ksort($billing, SORT_NATURAL|SORT_FLAG_CASE);
+        ksort($priorities, SORT_NATURAL|SORT_FLAG_CASE);
         return [
             'periodId'=>$periodId,
             'periodLabel'=>$period === null ? 'Full coverage · December 1–31, 2023'

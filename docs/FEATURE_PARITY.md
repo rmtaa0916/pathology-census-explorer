@@ -10,27 +10,34 @@ The project has **two implementations** of the same census editing/reporting exp
 | Multi-record staged edits and Save all | \`public/index.php\` + \`public/api/batch-update.php\` + \`src/CensusBatchPlanner.php\` + \`src/SheetsClient.php\` | \`apps-script/Index.html\` + \`apps-script/Code.gs:updateRecordsBatch\` |
 | **A4 formal reports** | \`public/report.php\` (server-side printable HTML) + \`src/ReportBuilder.php\` | \`apps-script/Index.html:reportAggregate/reportDocument/generateA4Report\` |
 | Report coverage | Four Dec 2023 intervals + full Dec 1–31 | Same |
-| Optional appendix | By examination × patient group × billing × priority | Same |
+| Optional appendix | Yes, A4 repeat pages | Same |
+| Required name, position and date for both signers | Yes, entered before report creation | Same |
+| Calculated amounts in census | Optional, off by default | Same |
+| Institutional letterhead | Original full-color artwork every page | Same |
 | PDF output | Browser Print → Save as PDF | Browser Print → Save as PDF |
 | Source-change monitoring | Not yet ported as a PHP cron/email subsystem | \`apps-script/SchemaMonitor.gs\` (change trigger + hourly scan) |
 | Local preview fixture | \`CensusData::mockRows()\` when \`APP_MODE\` is not \`live\` | Test fixture is in Node test suite; app itself reads the connected copy |
 
-## Report data contract
+## Report parity and data contract
 
-Both report generators use **record-level source data**, not month-wide aggregates. Each source record has:
+Both implementations produce the **Immunology Laboratory Census** using record-level source data, not month-wide estimates. Each source record contains `sheetRow`, `period`, `test`, `patientGroup`, `billing`, `priority`, `count`, `rate`, and `amount`. The fixed source schema has four December 2023 reporting periods. The report totals are derived by test, patient group, billing, priority, and period; each table includes a total row.
 
-\`sheetRow\`, \`period\`, \`test\`, \`patientGroup\`, \`billing\`, \`priority\`, \`count\`, \`rate\`, and \`amount\`.
+The current PHP and Apps Script report experiences share:
 
-A reporting-period selection filters by one of \`Dec 1–7\`, \`Dec 8–14\`, \`Dec 15–21\`, \`Dec 22–31\`. Full coverage includes all four.
+- **Original-color LCP letterhead** repeated at the top and bottom of every printed A4 page, including appendix pages; both embed the same institutional logo/letterhead data from Apps Script.
+- **Arial 10 pt black report typography**, compact statistical tables, **47 mm top / 46 mm bottom / 16 mm side margins**.
+- **Required full name, position and date for two signatories**; selectable second role (**Noted by**, **Reviewed by**, **Approved by**). Dates print without a “Date:” prefix and without instructional placeholders. Signatures follow the appendix if it is selected.
+- **DOH-informed laboratory census structure** rather than a dashboard summary: reporting period, preparation date, examination totals, classifications and detailed examination counts. No “For internal verification” banners, spreadsheet-implementation labels, or numbered signatory chapter appear in the formal report.
+- Optional category-detail appendix and separately optional **calculated amounts (off by default)**; amounts are count × rate, not confirmed collections.
+- A4 page-by-page screen preview and printable, flowing HTML with repeat-margin letterhead graphics. On PHP, the signatory entry form POSTs to the authenticated `public/report.php` rather than embedding names into URLs.
 
-Report sections: LCP institutional header, reporting dates and generation timestamp, executive totals, interval comparison (full only), patient-group, billing, priority, examination totals, review/signature lines (unfilled), and optional category-detail appendix.
+The PHP data model is `ReportBuilder::build($data, $periodId, $appendix)`; Apps Script uses `reportAggregate(RECORDS, reportPeriod)`. Both calculate full-period and individual-interval totals. In PHP demo mode, **SAMPLE DATA ONLY** remains on printouts because simulated values must not be passed off as institutional data.
 
-The report contains aggregated examination counts and amounts only. It does **not** include patient identifiers. It is marked for verification, not falsely signed or represented as an approved institutional document. Amounts are count × rate, not confirmed cash revenue.
+## Known implementation differences
 
-PHP summary model: \`ReportBuilder::build($data, $periodId, $appendix)\`.
-JavaScript summary model: \`reportAggregate(RECORDS, reportPeriod)\`.
-
-There are four period selectors, indexed \`0\`–\`3\`; \`all\` means December 1–31. The reporting periods are fixed to the present December 2023 schema. Future months require a schema-aware enhancement.
+- PHP uses independent HTTPS hosting, Basic authentication with protected server-side credentials, and an atomic Google Sheets batch update. Apps Script uses Google identity checks and Apps Script services.
+- PHP does **not** yet implement the Apps Script **hourly/on-change schema monitoring and email alerts**. It performs local data-consistency checks and enforces row, category and formula protections at batch-save time. These are not equivalent to the Apps Script monitor.
+- PHP uses a separate authenticated `report.php` route, while Apps Script opens its report within the current app. Neither project is automatically deployed by changes to the other.
 
 ## Multi-edit workflow
 
