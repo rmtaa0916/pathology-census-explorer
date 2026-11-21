@@ -28,7 +28,7 @@ final class SheetsClient
 
     public function readRows(): array
     {
-        // Read only the DEMO tab; never fetch original census worksheets.
+        // Read only the configured working-copy tab; never fetch the original workbook.
         $range = "'" . self::TAB . "'!A4:K900";
         $uri = 'https://sheets.googleapis.com/v4/spreadsheets/' . rawurlencode($this->sheetId)
              . '/values/' . rawurlencode($range) . '?valueRenderOption=UNFORMATTED_VALUE';
@@ -47,13 +47,44 @@ final class SheetsClient
             . '/values/' . rawurlencode($checkRange) . '?valueRenderOption=UNFORMATTED_VALUE');
         $v = $check['values'][0] ?? [];
         if (($v[0] ?? null) !== $period || ($v[3] ?? null) !== $test || (int)($v[7] ?? -1) !== $expectedCount
-            || ($v[10] ?? null) !== 'SYNTHETIC / DEMO') {
-            throw new RuntimeException('The demo entry changed or is not a demo record. Reload and review before editing.');
+            ) {
+            throw new RuntimeException('The source entry changed. Reload and review before editing.');
         }
         $range = "'" . self::TAB . "'!H{$row}";
         return $this->request('PUT', 'https://sheets.googleapis.com/v4/spreadsheets/' . rawurlencode($this->sheetId)
             . '/values/' . rawurlencode($range) . '?valueInputOption=RAW',
             ['range' => $range, 'majorDimension' => 'ROWS', 'values' => [[$count]]]);
+    }
+
+
+    /**
+     * Save up to 100 staged source records using ONE atomic Sheets API
+     * spreadsheets.batchUpdate request. Preflight checks are optimistic;
+     * a different editor could still modify a row between read and write.
+     */
+    public function updateRecordsBatch(array $changes): array
+    {
+        require_once __DIR__ . '/CensusBatchPlanner.php';
+        $spreadsheetUri='https://sheets.googleapis.com/v4/spreadsheets/'.rawurlencode($this->sheetId);
+        // Fetch the live tab ID and require the expected working-copy layout.
+        $info=$this->request('GET',$spreadsheetUri.'?fields=sheets(properties(title,sheetId))');
+        $tabs=[];
+        foreach(($info['sheets']??[]) as $item){
+            $p=$item['properties']??[];
+            if(isset($p['title'],$p['sheetId']))$tabs[$p['title']]=(int)$p['sheetId'];
+        }
+        if(count($tabs)!==2||!isset($tabs[self::TAB],$tabs['DEMO - Weekly Overview'])){
+            throw new RuntimeException('Spreadsheet tabs changed. Review the source before batch editing.');
+        }
+        $rows=$this->readRows();
+        $formulaRange="'".self::TAB."'!J5:J796";
+        $formulas=$this->request('GET',$spreadsheetUri.'/values/'.
+            rawurlencode($formulaRange).'?valueRenderOption=FORMULA');
+        $plan=CensusBatchPlanner::plan($rows,$formulas['values']??[],$changes,$tabs[self::TAB]);
+        // Atomic at the Google Sheets batchUpdate request level; only D:I.
+        $this->request('POST',$spreadsheetUri.':batchUpdate',['requests'=>$plan['requests']]);
+        return ['success'=>true,'updatedCount'=>$plan['updatedCount'],
+            'rows'=>$plan['rows']];
     }
 
     private static function base64url(string $data): string { return rtrim(strtr(base64_encode($data), '+/', '-_'), '='); }
