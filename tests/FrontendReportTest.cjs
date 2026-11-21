@@ -64,7 +64,7 @@ assert.ok(get('content').innerHTML.includes('UNSAVED'));
 assert.ok(get('content').innerHTML.includes('Save all (1)'));
 vm.runInContext("showPage('reports')",sandbox);
 assert.ok(get('content').innerHTML.includes('Staged or uncertain edits'));
-assert.ok(get('content').innerHTML.includes('report-primary" disabled'));
+assert.ok(get('content').innerHTML.includes('data-report-submit disabled'));
 vm.runInContext("stagedChanges.clear();showPage('records')",sandbox);
 const valid=vm.runInContext("checkedRecord({...recordInputs(RECORDS[0]),count:19,rate:123.45})",sandbox);
 assert.equal(valid,true);
