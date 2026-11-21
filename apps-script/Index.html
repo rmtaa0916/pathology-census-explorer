@@ -431,16 +431,20 @@ function records(){
         <th>Billing · Priority</th><th class="right">Count</th>
         <th class="right">Rate</th><th class="right">Calculated amount</th><th>Edit</th>
       </tr></thead><tbody>
-        ${visible.map(r=>`<tr>
-          <td><strong>${escapeHtml(r.period)}</strong><div class="fine">Row ${r.sheetRow}</div></td>
-          <td><strong>${escapeHtml(r.test)}</strong></td>
-          <td>${escapeHtml(r.patientGroup)}</td>
-          <td>${escapeHtml(r.billing)} · ${escapeHtml(r.priority)}</td>
-          <td class="right">${fmtInt(r.count)}</td>
-          <td class="right">${fmtMoney(r.rate)}</td>
-          <td class="right">${fmtMoney(r.amount)}</td>
-          <td><button type="button" class="edit-row-btn" data-record-edit="${r.sheetRow}">Edit</button></td>
-        </tr>`).join('')||'<tr><td colspan="8" class="empty">No records match these filters.</td></tr>'}
+        ${visible.map(r=>{
+          const staged=stagedEdits.get(r.sheetRow);
+          const v=staged?{...r,...staged.values,amount:staged.values.count*staged.values.rate}:r;
+          return `<tr class="${staged?'is-staged':''}">
+            <td><strong>${escapeHtml(r.period)}</strong><div class="fine">Row ${r.sheetRow}</div></td>
+            <td><strong>${escapeHtml(v.test)}</strong>${staged?'<span class="staged-marker">UNSAVED</span>':''}</td>
+            <td>${escapeHtml(v.patientGroup)}</td>
+            <td>${escapeHtml(v.billing)} · ${escapeHtml(v.priority)}</td>
+            <td class="right">${fmtInt(v.count)}</td>
+            <td class="right">${fmtMoney(v.rate)}</td>
+            <td class="right">${fmtMoney(v.amount)}</td>
+            <td><button type="button" class="edit-row-btn" data-record-edit="${r.sheetRow}">${staged?'Edit staged':'Edit'}</button></td>
+          </tr>`;
+        })).join('')||'<tr><td colspan="8" class="empty">No records match these filters.</td></tr>'}
       </tbody></table></div>
       <div class="period-head">
         <p class="fine">Page ${recordPage+1} of ${pages} · source values synchronized with the Google Sheet after each save.</p>
