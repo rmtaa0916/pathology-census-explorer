@@ -31,3 +31,5 @@ jobs:
         run: node -e "JSON.parse(require('fs').readFileSync('apps-script/appsscript.json','utf8'))"
       - name: Test synthetic-only read/write safeguards
         run: node apps-script/tests/backend.test.cjs
+      - name: Validate dashboard script syntax and editable source records
+        run: node apps-script/tests/frontend.test.cjs
