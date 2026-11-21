@@ -85,3 +85,28 @@ assert.ok(get('content').innerHTML.includes('Source change detected'));
 assert.ok(get('content').innerHTML.includes('New source column requires review'));
 assert.ok(get('content').innerHTML.includes('data-check-source'));
 console.log('Frontend monitored/unmonitored/review-required source-status checks passed');
+
+
+vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:false,issues:[]};staleDashboard=false;recordQuery='';recordGroup='all';recordPeriod='all';showPage('records');const r=RECORDS[0];stageSourceRecord(r,{...recordValues(r),count:r.count+3})",sandbox);
+assert.ok(get('content').innerHTML.includes('Source record editor'));
+vm.runInContext("render()",sandbox);
+assert.ok(get('content').innerHTML.includes('1 unsaved change staged'));
+assert.ok(get('content').innerHTML.includes('data-batch-save'));
+assert.ok(get('content').innerHTML.includes('UNSAVED'));
+assert.ok(get('content').innerHTML.includes('Edit staged'));
+assert.ok(get('content').innerHTML.includes('5</td>'));
+assert.equal(vm.runInContext("stagedEdits.get(5).expected.count",sandbox),2);
+assert.equal(vm.runInContext("stagedEdits.get(5).values.count",sandbox),5);
+vm.runInContext("stageSourceRecord(RECORDS[1],{...recordValues(RECORDS[1]),rate:1320});render()",sandbox);
+assert.ok(get('content').innerHTML.includes('2 unsaved changes staged'));
+assert.equal(vm.runInContext("stagedEdits.size",sandbox),2);
+vm.runInContext("stageSourceRecord(RECORDS[0],recordValues(RECORDS[0]));render()",sandbox);
+assert.equal(vm.runInContext("stagedEdits.size",sandbox),1);
+vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:true,issues:[{kind:'columns',message:'New column'}]};render()",sandbox);
+assert.ok(get('content').innerHTML.includes('Save all (1)'));
+assert.ok(get('content').innerHTML.includes('disabled'));
+vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:false,issues:[]};stagedEdits.clear();render()",sandbox);
+assert.equal(vm.runInContext("stagedEdits.size",sandbox),0);
+assert.ok(html.includes('data:image/webp;base64,'),'LCP emblem must be bundled for offline display');
+assert.ok(html.includes('Pathology and Laboratory Medicine Department'));
+console.log('Batch staging, pending-row rendering, structural pause, and LCP branding tests passed');
