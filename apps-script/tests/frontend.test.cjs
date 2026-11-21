@@ -228,7 +228,7 @@ assert.ok(html.includes('#reportPreview #reportPaper{display:block!important}'),
 assert.ok(printed.includes('<colgroup>'),'Appendix sets explicit column widths');
 const noAppendix=vm.runInContext("reportDocument(reportAggregate(RECORDS,'all'),false)",sandbox);
 assert.ok(!noAppendix.includes('Appendix A.'),'Unchecked checkbox excludes appendix');
-assert.equal((printed.match(/<section class="report-appendix">/g)||[]).length,1,'Checked checkbox includes one appendix');
+assert.equal((printed.match(/<section class="report-appendix report-section">/g)||[]).length,1,'Checked checkbox includes one appendix');
 const screenSetup=get('content').innerHTML;
 assert.ok(screenSetup.includes('type="checkbox" id="reportDetail"'),'Appendix checkbox present');
 assert.ok(html.includes('.report-paper *:not(img){color:#000!important'),'Formal report text is black');
