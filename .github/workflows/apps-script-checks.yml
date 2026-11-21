@@ -1,0 +1,33 @@
+name: Apps Script checks
+
+on:
+  push:
+    branches: [apps-script]
+    paths:
+      - "apps-script/**"
+      - ".github/workflows/apps-script-checks.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps-script/**"
+      - ".github/workflows/apps-script-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check Apps Script syntax
+        run: |
+          cp apps-script/Code.gs /tmp/pathology-apps-script.js
+          node --check /tmp/pathology-apps-script.js
+      - name: Check JSON manifest
+        run: node -e "JSON.parse(require('fs').readFileSync('apps-script/appsscript.json','utf8'))"
+      - name: Test synthetic-only read/write safeguards
+        run: node apps-script/tests/backend.test.cjs
