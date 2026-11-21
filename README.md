@@ -1,97 +1,106 @@
-# Pathology Census Explorer — PHP and Google Sheets (demo-only pilot)
+# Pathology Census Explorer
 
-A **PHP 8.2+** version of the responsive Pathology Census Explorer. It keeps the original interface's HTML/CSS/JS structure. The public repository package **contains no source laboratory census data, no credentials, and no copied source workbook**.
+A LCP-branded immunology census dashboard for the **Pathology and Laboratory Medicine Department, Lung Center of the Philippines**. Designed as a primary web interface for examining and editing the **connected Google Sheets working copy**, with period-specific reporting and protected batch editing.
 
-## Google Apps Script application link
+## Application links
 
-**[Open Pathology Census Explorer](https://tinyurl.com/Pathology-Census-Explorer)**
+**[Open deployed Google Apps Script application](https://tinyurl.com/Pathology-Census-Explorer)**
 
-Short URL for the Google Apps Script deployment using the connected working-copy spreadsheet. Access is controlled by the Google Apps Script deployment settings. The PHP implementation documented below is separate from this web app.
+This live link points to the Google Apps Script deployment, not the PHP code on this branch. GitHub is source-code hosting; PHP requires an independent PHP-capable HTTPS host.
 
-## Status
+## Supported features
 
-- Visual parity of original HTML vs PHP-rendered HTML: **10/10 pixel-identical screenshots** (five views × desktop/mobile) using an identical local fixture. This establishes *rendering parity*, not live integration.
-- The included demo build renders **entirely synthetic** numbers using `CensusData::mockRows()`.
-- Google Sheets client and a controlled demo count update endpoint are **implemented but not authenticated, hosted or tested against Google API**. They become operational only when the owner's Google Cloud service account and PHP hosting are configured.
-- The available connected GitHub tools cannot create a new repository. The source repository is managed separately from the PHP deployment.
+| Workflow | PHP \`main\` | Apps Script \`apps-script\` |
+|---|---|---|
+| Institutional LCP letterhead and department header | Yes | Yes |
+| Overview, reporting intervals and examination rankings | Yes | Yes |
+| Edit existing examination inputs | Yes, when live editing enabled | Yes |
+| **Stage several records and Save all once** | Yes — atomic Sheets batch request | Yes — guarded grouped writes |
+| **A4 formal immunology census report** | Yes — \`report.php\` | Yes — in-app print preview |
+| One reporting interval or **full December 2023 coverage** | Yes | Yes |
+| Detailed category appendix | Optional | Optional |
+| Browser Print / Save as PDF | Yes | Yes |
+| Automatic source-schema email alerts | Not yet ported | Yes, after trigger installation |
 
-## System requirements
+See [Feature parity and implementation map](docs/FEATURE_PARITY.md) for concrete paths, data model and known limitations.
 
-- PHP 8.2+ with `openssl` enabled, HTTPS (mandatory for live use), sessions enabled, network access to `oauth2.googleapis.com` and `sheets.googleapis.com`.
-- A PHP-capable host with document root set to the **`public/`** folder (not the repository root).
-- A Google Cloud project with the Google Sheets API enabled, and a service account with a credential JSON file stored outside the public folder.
-- Share the specific Google Sheet with the **service account email**, with `Viewer` for a read-only pilot or `Editor` only when write access is deliberately enabled. Grant **no folder-wide access**.
-- An account password hash configured as an environment variable. Basic authentication is suitable for a restricted technical pilot; replace with institutional SSO, per-user authorization, audit logging and approved hosting before handling production laboratory records.
+## A4 report generation
 
-**GitHub is source-code hosting only. GitHub Pages cannot execute PHP.** Deploy separately to a PHP-compatible HTTPS host. Do **not** publish the original imported December 2023 workbook, the CSV containing real counts, or any Google credential JSON in a public repository.
+Open **Formal reports** in either dashboard. Select one interval (December 1–7, 8–14, 15–21, or 22–31) or **full coverage (December 1–31, 2023)**. Optionally include the grouped examination × patient-group × billing × priority appendix. Select **Generate A4 report**, review the draft, then use **Print / Save PDF**.
 
-## Quick local demo
+The report includes the LCP emblem and department header, reporting dates, generation timestamp, totals, patient-group/billing/priority breakdowns, examination table and **blank** prepared/reviewed sign-off lines. It is marked **for internal verification**, not institutional approval. Counts are examinations, not distinct patients; calculated amounts are not proof of collected revenue.
 
-```sh
-php -S 127.0.0.1:8000 -t public
-# Browse http://127.0.0.1:8000/index.php
-```
+The PHP endpoint is authenticated and can also be reached as:
 
-No credentials are required for default `APP_MODE=demo`. The app displays synthetic values in each of the four December reporting intervals. Source totals will **not** match the separately generated Google Sheet demo until live mode is enabled, because the local mock data is generated independently.
+- \`/report.php?period=all\` — full coverage.
+- \`/report.php?period=2\` — December 15–21.
+- \`/report.php?period=2&detail=1\` — selected period with detailed appendix.
 
-## Enable authenticated Google Sheets reads
+## Multi-record editing
 
-Set the following **server-side environment variables**, not JavaScript variables:
+In **Source records**, filter or search rows, edit the supported columns D–I, and **stage** changes. Review the pending changes and select **Save all**. The browser does not write each edit separately.
 
-```sh
+The PHP backend validates each proposed row, the old values, category combinations, duplicate identities and original formulas. It issues one atomic [Google Sheets spreadsheets.batchUpdate](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/batchUpdate) request for columns D–I, leaving reporting dates, amount formulas and source metadata untouched. A response can still be lost or another editor can change values between the preflight read and write; reconcile uncertain outcomes before resubmitting.
+
+The Google Apps Script implementation applies a script lock and grouped range writes with best-effort rollback on failure.
+
+## Data source and deployment
+
+The PHP code is independent from the Apps Script deployment. It has two modes:
+
+- **Local preview** (default \`APP_MODE=demo\`): generated sample records for development. These are not the connected worksheet's actual values, and A4 reports are marked **SAMPLE DATA ONLY**.
+- **Connected working copy** (\`APP_MODE=live\`): reads the authorized Google Sheet on page load and reports current values. The working copy can be demonstrated without changing the application's data model. The original workbook is never accessed by this code.
+
+**PHP 8.2+, HTTPS, sessions, OpenSSL, and a private Google service-account JSON are required for connected deployment.** Never commit credentials or institutional records.
+
+Configure these server-side environment variables:
+
+\`\`\`sh
 APP_MODE=live
-APP_ACCESS_USER=your-authorized-user
-APP_ACCESS_PASSWORD_HASH='hash-generated-with-php-password_hash'
-GOOGLE_SPREADSHEET_ID='the-private-spreadsheet-id'
-GOOGLE_SERVICE_ACCOUNT_FILE='/path/outside/webroot/service-account.json'
+APP_ACCESS_USER=your-authorized-username
+APP_ACCESS_PASSWORD_HASH='hash-from-php-password_hash'
+GOOGLE_SPREADSHEET_ID='configured-working-copy-spreadsheet-id'
+GOOGLE_SERVICE_ACCOUNT_FILE='/secure/path/outside/webroot/service-account.json'
 APP_WRITE_ENABLED=0
-```
+\`\`\`
 
-Generate the password hash locally:
+Start with \`APP_WRITE_ENABLED=0\` for read-only validation. Enable writes only after credential, permission, CSRF, and authorization checks have been verified. Set the web server document root to \`public/\`. Local sample preview:
 
-```sh
-php -r 'echo password_hash("YOUR-STRONG-PASSWORD", PASSWORD_DEFAULT), PHP_EOL;'
-```
+\`\`\`sh
+php -S 127.0.0.1:8000 -t public
+\`\`\`
 
-The PHP server retrieves the `DEMO - Weekly Census!A4:K900` range on **every dashboard refresh** and generates current aggregates. Only that demo tab is accessible through the shipped data adapter. It deliberately cannot fetch the original census tabs. The browser never sees the service-account credentials or Google access tokens. The browser renders the returned aggregate dataset but **does receive demo-level values**; do not treat it as an authorization boundary for specific demo cells.
+See [PHP and Google Cloud setup](docs/SETUP.md). The Google service-account credentials and PHP hosting are **not included** in this repository or automatically configured by the Google Apps Script connection.
 
-## Optional two-way demo editing
+## Project layout
 
-Once the server has been tested with read-only access, grant `Editor` only on the intended spreadsheet and set `APP_WRITE_ENABLED=1` on the secured PHP server. On the **Examinations** view, open an examination, choose a December interval, then select **Edit selected interval** in the drawer. Editing writes exactly one `Test count` cell in column H, rows 5–900, in `DEMO - Weekly Census` and reloads the dashboard. The update endpoint performs:
+\`\`\`text
+public/index.php              PHP dashboard and staged-edit UI
+public/report.php             Authenticated A4 report preview
+public/api/update.php         Legacy single-count endpoint
+public/api/batch-update.php   CSRF-protected multi-row save endpoint
+src/CensusData.php            Source record and aggregate normalization
+src/ReportBuilder.php         Period / full-coverage report computations
+src/CensusBatchPlanner.php   Pure-PHP batch validation + Sheets updateCells requests
+src/SheetsClient.php          Google Sheets API service-account client
+src/bootstrap.php             Mode, dataset and authentication bootstrap
+tests/                       Data, report, batch planner and browser script tests
+docs/FEATURE_PARITY.md        PHP and Apps Script correspondence
+\`\`\`
 
-- Server-side authentication and CSRF validation.
-- Strict row and non-negative-integer validation.
-- Expected period, examination and previous-count checks to reduce stale-write risk.
-- Verification that the row carries `SYNTHETIC / DEMO` status.
-- No writes to real laboratory census tabs.
+The \`apps-script\` branch contains \`Code.gs\`, \`SchemaMonitor.gs\`, \`Index.html\` and its own tests.
 
-If formulas in the demo sheet reference the changed count, they recalculate in Google Sheets and will appear in the refreshed dashboard.
+## Testing
 
-**Caution:** Column J in `DEMO - Weekly Census` contains `=H*I` formulas; editing H in Google Sheets recalculates J. Never overwrite column J from the PHP app.
+\`\`\`sh
+php -d zend.assertions=1 -d assert.exception=1 tests/CensusDataTest.php
+php -d zend.assertions=1 -d assert.exception=1 tests/ReportBuilderTest.php
+php -d zend.assertions=1 -d assert.exception=1 tests/CensusBatchPlannerTest.php
+node tests/FrontendReportTest.cjs
+\`\`\`
 
-## File layout
+GitHub Actions runs these checks on \`main\`. The report layout was also exercised in headless Chromium and printed to A4 PDFs using a non-sensitive local fixture.
 
-```text
-public/index.php        PHP-rendered responsive Explorer
-public/api/update.php   Protected synthetic count update endpoint
-src/bootstrap.php       Mode selection and Basic-auth gate
-src/SheetsClient.php    Service-account OAuth + Google Sheets REST client
-src/CensusData.php      Validated normalization / aggregation + local mock
-.env.example            Configuration names only; no credentials
-.gitignore              Blocks .env, credential JSON and private data
-```
+## Safety and scope
 
-## Deployment checklist
-
-1. Use the GitHub repository `rmtaa0916/pathology-census-explorer`. If it is public, change its visibility to **Private** before storing any non-demo information.
-2. Deploy from that repository to a PHP 8.2+ HTTPS host. Set document root to `public/`. Do **not** use GitHub Pages for PHP execution.
-3. Enable Sheets API in Google Cloud, create a service account, store its credential JSON outside webroot, and share only the specific demo Sheet with the service-account identity.
-4. Configure server environment and authenticate before `APP_MODE=live` is enabled.
-5. Test read-only dashboard refresh after changing `DEMO - Weekly Census`, then deliberately enable write access if needed.
-6. Before production deployment, obtain organizational authorization and implement SSO, per-user audit logging, explicit edit roles and a non-demo data-quality review.
-
-This package is a starting point for deployment, **not** evidence that a GitHub site or a live Google Sheets API connection already exists.
-
-## Repository and Cloud setup
-
-See [`docs/SETUP.md`](docs/SETUP.md) for the private repository, Google Cloud service-account, separated synthetic Sheet and secure PHP-hosting steps. The required Google Cloud credentials cannot be transferred from the ChatGPT Google Drive connection.
+This is an editable pilot, not a patient-level laboratory system. Do not expose it publicly with real institutional data without organizational approval, per-user roles, audit logging and stronger authentication. The PHP version does **not yet** have the Apps Script source-monitor email triggers. Future months, additional tests or new columns require schema-aware changes and must be reviewed before use.
