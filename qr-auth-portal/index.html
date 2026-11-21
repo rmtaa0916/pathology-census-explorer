@@ -54,6 +54,9 @@ footer{padding:14px 0;color:var(--muted);font-size:11px}
 #login-panel{max-width:470px;margin:9vh auto 0;padding:25px}
 #login-panel h2{margin:0 0 6px}
 #google-login{min-height:44px;margin:18px 0 12px}
+#qr-scan-panel{padding:12px;margin:11px 0;background:#f0f7f6;border:1px solid var(--line);border-radius:10px}
+#qr-camera{width:100%;max-height:310px;aspect-ratio:4/3;object-fit:cover;border-radius:9px;background:#13272c}
+#qr-camera-status{font-size:12px;color:var(--muted);margin:8px 0}
 #signout{border:0;padding:6px;background:transparent;color:var(--teal);font-size:12px;text-decoration:underline}
 @media print{#login-panel,#signout{display:none!important}}
 </style>
@@ -85,7 +88,13 @@ footer{padding:14px 0;color:var(--muted);font-size:11px}
  <div class="panel">
   <div class="card">
    <h2>Record laboratory activity</h2>
-   <p class="muted">Select a QR-coded activity, or open this page directly by scanning a printed QR using the phone's normal camera.</p>
+   <p class="muted">Scan multiple labels in this signed-in page, or choose a reference below. Every activity still needs confirmation.</p>
+   <div class="row hide-print" style="margin:8px 0 12px"><button type="button" class="secondary" id="start-qr-scan">Scan next QR — stay signed in</button></div>
+   <div id="qr-scan-panel" class="hide-print" hidden>
+    <video id="qr-camera" playsinline autoplay muted></video>
+    <div id="qr-camera-status" role="status">Point your camera at a QR Logger label.</div>
+    <button type="button" class="secondary" id="stop-qr-scan">Close camera</button>
+   </div>
    <form id="form" autocomplete="off">
     <label for="ref">Scanned QR / item</label><select id="ref" required><option value="">Loading sample items…</option></select>
     <div id="lot-wrap" style="display:none"><label for="kit">Physical kit / package</label><select id="kit"></select></div>
@@ -158,6 +167,7 @@ function onGoogleCredential(result){
  }).finally(()=>SIGNIN_BUSY=false);
 }
 function signOut(){
+ stopQrScan();
  LOGIN_TOKEN='';LOGIN_NONCE='';DATA=null;PENDING=null;LAST_SUCCESS=false;
  el('app-shell').hidden=true;el('login-panel').hidden=false;el('signout').hidden=true;
  el('who').textContent='Sign-in required';el('google-login').innerHTML='';
@@ -295,6 +305,69 @@ function adoptData(data,initial){
   renderRecent();
 
 }
+// Keep the scanning session in this authenticated browser tab. No scanned QR auto-saves.
+const QR_CAMERA={stream:null,detector:null,timer:null,epoch:0};
+function stopQrScan(message=''){
+ QR_CAMERA.epoch++;
+ if(QR_CAMERA.timer!==null)clearTimeout(QR_CAMERA.timer);
+ QR_CAMERA.timer=null;
+ const video=el('qr-camera');
+ if(video){video.pause();video.srcObject=null}
+ if(QR_CAMERA.stream)QR_CAMERA.stream.getTracks().forEach(track=>track.stop());
+ QR_CAMERA.stream=null;QR_CAMERA.detector=null;
+ el('qr-scan-panel').hidden=true;
+ if(message)showStatus(message);
+}
+function qrRefFromLink(raw){
+ try{
+  const url=new URL(String(raw));
+  if(url.origin!==window.location.origin||url.pathname!==window.location.pathname)return '';
+  const ref=url.searchParams.get('ref')||'';
+  return refs().some(x=>x.id===ref)?ref:'';
+ }catch(_){return ''}
+}
+async function readQrFrame(epoch){
+ if(!QR_CAMERA.stream||QR_CAMERA.epoch!==epoch)return;
+ try{
+  const video=el('qr-camera');
+  if(video.readyState>=2){
+   const hits=await QR_CAMERA.detector.detect(video);
+   if(QR_CAMERA.epoch!==epoch)return;
+   for(const hit of hits){
+    const ref=qrRefFromLink(hit.rawValue);
+    if(!ref){el('qr-camera-status').textContent='QR not recognized. Scan a QR Logger label.';continue}
+    stopQrScan();
+    el('ref').value=ref;onRefChange();
+    showStatus('QR identified. Select activity and confirm. No transaction was saved.');
+    return;
+   }
+  }
+ }catch(_){if(QR_CAMERA.epoch===epoch)el('qr-camera-status').textContent='Hold the QR label steady.'}
+ if(QR_CAMERA.epoch===epoch)QR_CAMERA.timer=setTimeout(()=>readQrFrame(epoch),250);
+}
+async function startQrScan(){
+ if(!DATA)return showStatus('Sign in before scanning.','error');
+ if(LOCKED||PENDING)return showStatus('Finish or retry the pending transaction before scanning another QR.','error');
+ if(typeof BarcodeDetector==='undefined'||!navigator.mediaDevices?.getUserMedia){
+  return showStatus('In-app camera scanning is unsupported. Use your phone camera or select a reference below.','error');
+ }
+ if(LAST_SUCCESS)resetAfterSuccess();
+ stopQrScan();
+ const epoch=QR_CAMERA.epoch;
+ el('qr-scan-panel').hidden=false;
+ el('qr-camera-status').textContent='Opening rear camera…';
+ try{
+  QR_CAMERA.detector=new BarcodeDetector({formats:['qr_code']});
+  const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  if(QR_CAMERA.epoch!==epoch){stream.getTracks().forEach(track=>track.stop());return}
+  QR_CAMERA.stream=stream;
+  await el('qr-camera').play();
+  if(QR_CAMERA.epoch===epoch)readQrFrame(epoch);
+ }catch(_){
+  stopQrScan();
+  showStatus('Camera unavailable or permission denied. Use your phone camera or select a reference below.','error');
+ }
+}
 function refreshData(initial){
  rpc('bootstrap',{}).then(data=>adoptData(data,initial))
   .catch(err=>showStatus('Unable to load QR Logger: '+err.message,'error'));
@@ -310,6 +383,10 @@ document.addEventListener('DOMContentLoaded',()=>{
  el('print-labels').addEventListener('click',()=>{document.body.classList.remove('print-kits');document.body.classList.add('print-labels');window.print()});
  el('print-kits').addEventListener('click',()=>{document.body.classList.remove('print-labels');document.body.classList.add('print-kits');window.print()});
  el('signout').addEventListener('click',signOut);
+ el('start-qr-scan').addEventListener('click',startQrScan);
+ el('stop-qr-scan').addEventListener('click',()=>stopQrScan());
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&QR_CAMERA.stream)stopQrScan()});
+ window.addEventListener('pagehide',()=>{if(QR_CAMERA.stream)stopQrScan()});
  setTab('log');
  window.addEventListener('load',()=>launchGoogle(),{once:true});
 });
