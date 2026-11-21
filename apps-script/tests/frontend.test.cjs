@@ -211,7 +211,7 @@ console.log('Black report fonts, original-color repeated letterhead, optional ap
   assert.ok(css.includes('@top-center')&&css.includes('@bottom-center'));
   assert.ok(css.includes('data:image/png;base64,HEAD')&&css.includes('data:image/png;base64,FOOT'));
   assert.equal(crops.length,3,'Prepare full A4, header and footer crops');
-  assert.equal(crops[1][2],794);
-  assert.equal(crops[2][1],952);
+  assert.equal(crops[1][3],794,'Header width uses full A4 pixel size');
+  assert.equal(crops[2][2],952,'Footer crop begins at expected image position');
   console.log('Printed full-color margin-box artwork prepared on every page, without background graphics');
 })().catch(error=>{console.error(error);process.exitCode=1});
