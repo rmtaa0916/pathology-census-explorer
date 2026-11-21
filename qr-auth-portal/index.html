@@ -130,15 +130,18 @@ const newNonce=()=>{const arr=new Uint8Array(20);crypto.getRandomValues(arr);ret
 function loginMessage(msg,error=false){el('login-status').textContent=msg;el('login-status').className='status '+(error?'error':'')}
 function safeEndpoint(url){try{const u=new URL(url);return u.protocol==='https:'&&u.hostname==='script.google.com'&&
   /^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(u.pathname)}catch(_){return false}}
-function launchGoogle(){
+function launchGoogle(allowAuto=true){
  if(!CFG.clientId||!/^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(CFG.clientId)||!safeEndpoint(CFG.endpoint)){
   loginMessage('Administrator setup needed: set the Google OAuth Client ID and Apps Script endpoint in config.js.',true);return;
  }
  if(!window.google?.accounts?.id){loginMessage('Google Sign-In could not load. Check your connection and refresh.',true);return}
  LOGIN_NONCE=newNonce();
- google.accounts.id.initialize({client_id:CFG.clientId,nonce:LOGIN_NONCE,callback:onGoogleCredential,auto_select:false});
+ google.accounts.id.initialize({client_id:CFG.clientId,nonce:LOGIN_NONCE,callback:onGoogleCredential,auto_select:allowAuto,
+  button_auto_select:allowAuto,use_fedcm_for_button:true});
  google.accounts.id.renderButton(el('google-login'),{type:'standard',size:'large',theme:'outline',text:'signin_with',width:275});
- loginMessage('Choose an approved laboratory Google account.');
+ loginMessage(allowAuto?'Returning staff may sign in automatically. Otherwise choose your approved account.':'Choose an approved laboratory Google account.');
+ // Automatic sign-in is browser-dependent; the manual Google button remains available.
+ if(allowAuto){try{google.accounts.id.prompt()}catch(_){/* Manual button still works. */}}
 }
 function onGoogleCredential(result){
  if(SIGNIN_BUSY)return;
@@ -159,7 +162,7 @@ function signOut(){
  el('app-shell').hidden=true;el('login-panel').hidden=false;el('signout').hidden=true;
  el('who').textContent='Sign-in required';el('google-login').innerHTML='';
  if(window.google?.accounts?.id)google.accounts.id.disableAutoSelect();
- launchGoogle();
+ launchGoogle(false);
 }
 function rpc(op,payload){
  if(!LOGIN_TOKEN)return Promise.reject(Error('Sign in first.'));
@@ -308,7 +311,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  el('print-kits').addEventListener('click',()=>{document.body.classList.remove('print-labels');document.body.classList.add('print-kits');window.print()});
  el('signout').addEventListener('click',signOut);
  setTab('log');
- window.addEventListener('load',launchGoogle,{once:true});
+ window.addEventListener('load',()=>launchGoogle(),{once:true});
 });
 </script>
 </body>
