@@ -130,11 +130,32 @@ final class SheetsClient
         ];
     }
 
+    /**
+     * When the PHP source monitor has been enabled, block all source writes
+     * if the approved structure or formulas have changed. Without an enabled
+     * monitor, the existing batch planner's static schema protections remain.
+     */
+    private function assertMonitoredSourceSafeToEdit(): void
+    {
+        if (trim((string)getenv('SOURCE_MONITOR_STATE_FILE')) === '') return;
+        require_once __DIR__ . '/SourceMonitor.php';
+        $state = SourceMonitor::readState(SourceMonitor::statePathFromEnv());
+        if (!is_array($state['baseline'] ?? null)) {
+            throw new RuntimeException('Editing paused: source monitoring must be initialized first.');
+        }
+        $status = SourceMonitor::compare($this->readSourceMonitorSnapshot(), $state['baseline']);
+        if ($status['needsReview']) {
+            $reasons = implode(', ', array_unique(array_column($status['issues'], 'kind')));
+            throw new RuntimeException('Editing paused for source layout review: ' . $reasons);
+        }
+    }
+
     public function updateDemoCount(int $row, int $count, string $period, string $test, int $expectedCount): array
     {
         if ($row < 5 || $row > 900 || $count < 0 || $count > 100000 || $expectedCount < 0) {
             throw new InvalidArgumentException('Invalid worksheet row, count or previous value.');
         }
+        $this->assertMonitoredSourceSafeToEdit();
         // Optimistic concurrency check; prevents accidental overwrite when another editor changed the row.
         $checkRange = "'" . self::TAB . "'!A{$row}:K{$row}";
         $check = $this->request('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' . rawurlencode($this->sheetId)
@@ -158,6 +179,7 @@ final class SheetsClient
      */
     public function updateRecordsBatch(array $changes): array
     {
+        $this->assertMonitoredSourceSafeToEdit();
         require_once __DIR__ . '/CensusBatchPlanner.php';
         $spreadsheetUri='https://sheets.googleapis.com/v4/spreadsheets/'.rawurlencode($this->sheetId);
         // Fetch the live tab ID and require the expected working-copy layout.
