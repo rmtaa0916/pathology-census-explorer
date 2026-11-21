@@ -47,6 +47,7 @@ function builder(name){
 }
 const ctx={
  Date, Math, JSON,console,
+ requireOwner_:()=>true,
  Session:{getActiveUser:()=>({getEmail:()=> 'rmtaa0916@gmail.com'})},
  SpreadsheetApp:{openById:id=>{assert.equal(id,'1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE');return book;}},
  PropertiesService:{getScriptProperties:()=>props},
