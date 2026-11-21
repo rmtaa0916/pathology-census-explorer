@@ -73,6 +73,8 @@ function qrFindReference_(catalog,ref,kitId) {
     ? catalog.items.find(r=>String(r.item_id)===String(lot.item_id))
     : catalog.items.find(r=>String(r.item_id)===ref);
   if (!item) throw new Error('Unknown or inactive QR reference.');
+  if (lot && kitId && String(kitId)!==String(lot.kit_id))
+    throw new Error('Scanned kit does not match selected kit.');
   const selected = lot || catalog.lots.find(r=>String(r.kit_id)===String(kitId || '') &&
       String(r.item_id)===String(item.item_id));
   if (!selected) throw new Error('Select a specific kit/package before recording stock usage.');
@@ -101,7 +103,11 @@ function qrGetData() {
   return {
     appUrl:String(ScriptApp.getService().getUrl()||''),
     staff:staff, tests:c.tests, items:c.items, lots:c.lots,
-    balances:balances, count:ledger.length,
+    balances:balances,
+    openedKits:c.lots.filter(l=>String(l.status).toUpperCase()==='OPEN' ||
+      ledger.some(r=>String(r[9])===String(l.kit_id)&&r[5]==='KIT_OPENED'&&r[12]==='ACCEPTED'))
+      .map(l=>String(l.kit_id)),
+    count:ledger.length,
     recent:ledger.slice(-15).reverse().map(r=>({
       transactionId:r[0],timestamp:String(r[1]),kind:r[3],referenceId:r[4],
       action:r[5],quantity:r[6],unit:r[7],kitId:r[9],status:r[12]
