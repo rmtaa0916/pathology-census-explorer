@@ -27,9 +27,13 @@ jobs:
         run: |
           cp apps-script/Code.gs /tmp/pathology-apps-script.js
           node --check /tmp/pathology-apps-script.js
+          cp apps-script/SchemaMonitor.gs /tmp/pathology-source-monitor.js
+          node --check /tmp/pathology-source-monitor.js
       - name: Check JSON manifest
         run: node -e "JSON.parse(require('fs').readFileSync('apps-script/appsscript.json','utf8'))"
       - name: Test synthetic-only read/write safeguards
         run: node apps-script/tests/backend.test.cjs
       - name: Validate dashboard script syntax and editable source records
         run: node apps-script/tests/frontend.test.cjs
+      - name: Test source change monitoring, alerts and safe write blocking
+        run: node apps-script/tests/schema-monitor.test.cjs
