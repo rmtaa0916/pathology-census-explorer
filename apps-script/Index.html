@@ -122,7 +122,40 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
 .report-appendix{break-before:page;page-break-before:always}
 @media(max-width:600px){.report-preview{padding:0}.report-paper{width:100%;min-height:0;padding:25% 7% 22%}.report-stationery{height:auto;aspect-ratio:210 / 297}.report-letterhead img{width:55px}.report-institution{font-size:11px}.report-department{font-size:10px}.report-metrics,.report-counts{grid-template-columns:repeat(2,1fr)}.report-toolbar{border-radius:0}}
 
-/* Formal reports use monochrome text, tables, borders and stationery. */
+
+/* Show actual, bounded A4 sheets on screen. The original report remains
+   in the DOM exclusively for native, flowing print pagination. */
+@media screen {
+ #reportPreview #reportPaper{display:none!important}
+ #reportPreview .report-sheets{display:flex;flex-direction:column;align-items:center;gap:18px;margin:0 auto 18px}
+ #reportPreview .report-paper.report-screen-sheet{
+   display:block!important;box-sizing:border-box;flex:none;position:relative;isolation:isolate;
+   width:210mm!important;max-width:none!important;height:297mm!important;min-height:297mm!important;
+   padding:47mm 16mm 46mm!important;margin:0!important;overflow:hidden!important;
+   background:#fff;box-shadow:0 4px 23px #11345320
+ }
+ #reportPreview .report-paper.report-screen-sheet>.report-stationery{
+   display:block;position:absolute;inset:0;width:100%;height:100%;
+   object-fit:fill;pointer-events:none;z-index:0;filter:none!important
+ }
+ #reportPreview .report-paper.report-screen-sheet>.report-content{
+   position:relative;z-index:1;height:100%;width:100%;overflow:hidden;
+   box-sizing:border-box
+ }
+ #reportPreview .report-paper.report-screen-sheet .report-appendix{break-before:auto;page-break-before:auto}
+ #reportPreview .report-paper.report-screen-sheet .report-appendix-table{table-layout:fixed}
+ #reportPreview .report-paper.report-screen-sheet td,
+ #reportPreview .report-paper.report-screen-sheet th{overflow-wrap:anywhere;word-break:normal}
+ #reportPreview .report-page-counter{
+   text-align:center;font-size:11px;color:#657785;margin:0 0 4px
+ }
+}
+@media print {
+ #reportPreview .report-sheets{display:none!important}
+ #reportPreview #reportPaper{display:block!important}
+}
+
+/* Formal reports use black text, while LCP stationery keeps its original colors. */
 #reportPreview .report-paper,#reportPreview .report-paper *:not(img){color:#000!important;text-shadow:none!important}
 /* The original LCP letterhead retains its full institutional colors. */
 #reportPreview .report-paper .report-stationery{filter:none!important}
@@ -941,6 +974,118 @@ function reportDocument(model,withAppendix=false,signatories=reportSignatories,s
      </div>
    </article>`;
 }
+
+/* Render one A4 preview sheet per page instead of overlaying a one-page letterhead
+   on a document that is taller than A4. Source #reportPaper is unchanged and
+   remains the authoritative document for browser Print / Save PDF. */
+function paginateA4ScreenPreview(preview){
+  const printPaper=preview.querySelector('#reportPaper');
+  const original=printPaper?.querySelector('.report-content');
+  if(!original)throw Error('Report preview content was not found.');
+  const previous=preview.querySelector('.report-sheets');
+  if(previous)previous.remove();
+  const sheets=document.createElement('div');
+  sheets.className='report-sheets';
+  sheets.setAttribute('aria-label','Paginated A4 preview');
+  printPaper.parentNode.insertBefore(sheets,printPaper);
+  let pageBody=null;
+  let pageCount=0;
+  const maxPages=200;
+  function startPage(){
+    if(++pageCount>maxPages)throw Error('Report exceeds the supported preview page count.');
+    const sheet=document.createElement('article');
+    sheet.className='report-paper report-screen-sheet';
+    sheet.setAttribute('aria-label','A4 report page '+pageCount);
+    const stationery=document.createElement('img');
+    stationery.className='report-stationery';
+    stationery.src=REPORT_LETTERHEAD_DATA_URL;
+    stationery.alt='LCP original-color letterhead, page '+pageCount;
+    const body=document.createElement('div');
+    body.className='report-content';
+    sheet.appendChild(stationery);
+    sheet.appendChild(body);
+    sheets.appendChild(sheet);
+    pageBody=body;
+  }
+  function fits(){
+    return pageBody.scrollHeight<=pageBody.clientHeight+2;
+  }
+  function appendBlock(block){
+    if(!pageBody)startPage();
+    pageBody.appendChild(block);
+    if(!fits()){
+      block.remove();
+      if(pageBody.childElementCount===0)
+        throw Error('A report section exceeds one A4 page. Reduce its content.');
+      startPage();
+      pageBody.appendChild(block);
+      if(!fits())throw Error('A report section cannot fit inside the printable A4 area.');
+    }
+  }
+  function splitTable(section){
+    const table=section.querySelector(':scope > table');
+    const body=table?.tBodies?.[0];
+    if(!body){appendBlock(section.cloneNode(true));return;}
+    const rows=Array.from(body.rows);
+    const skeleton=section.cloneNode(true);
+    skeleton.querySelector('table').tBodies[0].replaceChildren();
+    let part=null;
+    let partBody=null;
+    function newPart(continued){
+      part=skeleton.cloneNode(true);
+      partBody=part.querySelector('table').tBodies[0];
+      if(continued){
+        const header=part.querySelector('h2');
+        if(header)header.textContent+=' (continued)';
+        const footnote=part.querySelector('.report-footnote');
+        if(footnote)footnote.remove();
+      }
+      if(!pageBody)startPage();
+      pageBody.appendChild(part);
+      if(!fits()){
+        part.remove();
+        if(pageBody.childElementCount)startPage();
+        else if(pageCount===1)throw Error('The report table header does not fit on A4.');
+        else startPage();
+        pageBody.appendChild(part);
+        if(!fits())throw Error('The report table header is taller than the printable A4 area.');
+      }
+    }
+    newPart(false);
+    for(const row of rows){
+      const copy=row.cloneNode(true);
+      partBody.appendChild(copy);
+      if(!fits()){
+        copy.remove();
+        if(!partBody.rows.length){
+          part.remove();
+          // Move the entire section header with its first row, never
+          // leave an orphan heading at the bottom of a page.
+          startPage();
+          newPart(false);
+        }else{
+          startPage();
+          newPart(true);
+        }
+        partBody.appendChild(copy);
+        if(!fits())throw Error('A detailed report row is too tall for one A4 page.');
+      }
+    }
+  }
+  for(const child of Array.from(original.children)){
+    if(child.classList?.contains('report-appendix')&&pageBody?.childElementCount)
+      startPage();
+    const hasTable=child.querySelector(':scope > table');
+    if(hasTable)splitTable(child);
+    else appendBlock(child.cloneNode(true));
+  }
+  const count=document.createElement('p');
+  count.className='report-page-counter';
+  count.textContent=pageCount+' A4 page'+(pageCount===1?'':'s')+' · Original-color LCP letterhead repeats on every page';
+  sheets.parentNode.insertBefore(count,sheets);
+  return pageCount;
+}
+
 function reports(){
   const options=[{id:'all',label:'Full coverage — Dec 1–31, 2023'},
     ...INTERVALS.map((it,i)=>({id:String(i),label:it.label+', 2023'}))];
@@ -979,7 +1124,7 @@ function reports(){
         <button type="button" class="report-generate" data-report-generate ${pending||SOURCE?.needsReview||!reportSignatoriesReady()?'disabled':''}>
           ${reportGenerating?'Loading source…':'Generate A4 report'}</button>
       </div>
-      <p class="fine">Print / Save PDF repeats the original-color LCP letterhead on every A4 page, including all appendix pages. Body text is black and stays inside the safe content margins. Previewed totals are not updated until a new report is generated.</p>
+      <p class="fine">The on-screen preview displays separate A4 sheets with reserved header and footer space. Print / Save PDF repeats the original-color LCP letterhead on every page, including appendix pages. Body text remains black. Previewed totals are not updated until a new report is generated.</p>
     </section>`;
 }
 async function generateA4Report(){
@@ -999,6 +1144,7 @@ async function generateA4Report(){
     const preview=document.getElementById('reportPreview');
     preview.innerHTML=reportDocument(model,detail,signatories,secondRole);
     preview.hidden=false;
+    paginateA4ScreenPreview(preview);
     preview.scrollTop=0;
     document.body.classList.add('report-open');
     preview.querySelector('[data-report-close]').addEventListener('click',closeA4Report);
