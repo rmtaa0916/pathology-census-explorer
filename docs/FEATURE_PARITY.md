@@ -36,7 +36,7 @@ The PHP data model is `ReportBuilder::build($data, $periodId, $appendix)`; Apps 
 ## Known implementation differences
 
 - PHP uses independent HTTPS hosting, Basic authentication with protected server-side credentials, and an atomic Google Sheets batch update. Apps Script uses Google identity checks and Apps Script services.
-- PHP does **not** yet implement the Apps Script **hourly/on-change schema monitoring and email alerts**. It performs local data-consistency checks and enforces row, category and formula protections at batch-save time. These are not equivalent to the Apps Script monitor.
+- PHP implements equivalent **read-only source structure/formula comparisons**, private baselines, optional deduplicated mail and write blocking when the monitor is enabled, but **does not automatically install Apps Script-style on-change triggers**. Scheduling and email delivery require a separately configured private PHP host, cron and mail transport. See [PHP source-monitor instructions](PHP_SOURCE_MONITOR.md).
 - PHP uses a separate authenticated `report.php` route, while Apps Script opens its report within the current app. Neither project is automatically deployed by changes to the other.
 
 ## Multi-edit workflow
