@@ -18,4 +18,6 @@ jobs:
         with:
           node-version: '20'
       - name: Validate Apps Script transaction logic
-        run: node qr-logger/tests/backend.test.cjs
+        run: |
+          node qr-logger/tests/backend.test.cjs
+          node qr-logger/tests/frontend.test.cjs
