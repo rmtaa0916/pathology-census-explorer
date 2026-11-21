@@ -2,19 +2,19 @@
 
 This folder contains the **Apps Script web app** on the `apps-script` branch. The PHP edition remains intact on `main`.
 
-The existing responsive dashboard is preserved in `Index.html`. Its five views, charts, search, examination drill-down, and reporting periods are implemented with the same HTML/CSS/JavaScript. `Code.gs` provides server-side `SpreadsheetApp` reads and protected write operations through `google.script.run`.
+The existing responsive dashboard is preserved in `Index.html`. Its six views, charts, source editor, search, examination drill-down, and reporting periods are implemented with the same HTML/CSS/JavaScript. `Code.gs` provides server-side `SpreadsheetApp` reads and protected write operations through `google.script.run`.
 
 **Data isolation:** Only the separate synthetic-only Google Sheet `1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE` and the `DEMO - Weekly Census` tab are used. The backend rejects unexpected tabs, non-synthetic rows, mismatched row identity, invalid counts and stale edits. Never swap in the original pathology census without an institutional security review.
 
 ## Deploy to Apps Script
 
-1. Sign in as `rmtaa0916@gmail.com` and open [Google Apps Script](https://script.google.com/home/projects). Create a new standalone project, or use the official `clasp` CLI to push this directory.
+1. Sign in as `rmtaa0916@gmail.com` and open your existing Pathology Census Explorer Apps Script project editor (or open the demo Sheet → **Extensions → Apps Script** to create a bound project). You may use the official `clasp` CLI to push this directory.
 2. Include `Code.gs`, `Index.html`, and `appsscript.json`. In the Apps Script editor, enable **Show appsscript.json manifest file in editor** under Project settings if necessary.
 3. Select **Deploy → New deployment → Web app**. Set **Execute as: Me**, **Who has access: Only myself**. Do not use public or anonymous access. Approve the Google Sheets and identity permissions.
-4. Visit the generated `/exec` URL while signed in. The owner must have access to the separate demo Sheet. The current baseline is **1,340 simulated tests** across 792 records.
+4. Visit the generated `/exec` URL while signed in. The owner must have access to the separate demo Sheet. There are **792 synthetic source records**, but counts and illustrative totals can change through permitted edits; never assume a fixed total.
 5. Open **Source records** from the sidebar or **Edit data** in the header. Filter by reporting interval, patient group or test; select **Edit** for any row (including zero-count rows).
 6. Edit the examination name, patient group, billing, priority, test count, or illustrative unit rate. **Save changes** updates only columns **D:I** in the synthetic Sheet. Column **J** retains its `=H×I` formula; overview metrics and charts are refreshed automatically.
-7. The same editor is accessible from an examination's detail drawer, scoped to the selected reporting interval. Test one change, verify formula recalculation in Google Sheets, and restore the original values.
+7. The same editor is accessible from an examination's detail drawer, scoped to the selected reporting interval. Test one change, verify formula recalculation in Google Sheets, and use **Undo last edit** after a confirmed save to restore the previous values.
 8. **Redeploy:** After updating the Apps Script editor with the latest `Code.gs` and `Index.html`, choose **Deploy → Manage deployments → Edit → Version: New version → Deploy**. Updating GitHub alone does not change the live `/exec` URL; publishing a new version of the existing deployment keeps the current URL and TinyURL alias.
 
 ### Security and deployment caveats
@@ -26,7 +26,7 @@ The existing responsive dashboard is preserved in `Index.html`. Its five views, 
 - A GitHub branch does not automatically publish an Apps Script web app. After changes are pushed, update the Apps Script project/deployment.
 - Never commit keys, private data, or the original clinical workbook.
 
-To run local backend tests: `node tests/backend.test.cjs` (requires Node.js; Apps Script APIs are mocked).
+To run the local backend and frontend tests: `node tests/backend.test.cjs` and `node tests/frontend.test.cjs` (Node.js required; Apps Script APIs and the DOM are mocked). GitHub Actions runs both on each change to the `apps-script` branch.
 
 ## Source editing policy
 
@@ -43,3 +43,17 @@ To run local backend tests: `node tests/backend.test.cjs` (requires Node.js; App
 | Synthetic safety marker | K | No — immutable |
 
 The server rechecks the previous values under a script lock before writing, rejects duplicate category identities within an interval, and checks the amount formula remains intact. All 792 source rows remain accessible even when their count is zero. A separate **Source records** table offers filtered, paginated editing. All dashboard KPIs and summary tables remain derived outputs, not separately editable fields.
+
+## Editing reliability and data checks
+
+- **Two distinct completion states:** the app confirms the Google Sheets save first and then refreshes the dashboard. A failed refresh never reports that the save failed.
+- **Unconfirmed writes:** a network or callback failure disables repeat submission. **Reload latest Sheet values** reads the source before determining whether the change was applied, rejected, or superseded.
+- **Concurrent edits:** the server uses script locking, source row identity, old-value comparison, formula protection and duplicate-key detection before writing. The editor cannot be closed during an active save, and delayed callbacks are guarded by the editor session.
+- **Unsaved changes:** cancelling an edited form prompts before discarding. Reloading or leaving during an active edit also requests browser confirmation when supported.
+- **Undo last edit:** available after a confirmed save and successful refresh. It restores the prior input columns through the same locked, stale-write-protected server function. Undo is not a permanent audit log and can be rejected if someone else changed the row.
+- **Live Data quality page:** checks 792 synthetic markers, valid group/billing/priority combinations, duplicate category identities, 792 amount formulas, count×rate reconciliation, numeric inputs, four expected reporting intervals, and dashboard totals. Results reflect the latest fetch; errors are not hardcoded as “Pass.”
+- **Display edge cases:** zero-total workloads produce 0% instead of NaN, and examination sorting supports both directions.
+
+### Deployment reminder
+
+GitHub **does not publish updates** to an existing Apps Script URL by itself. Open the existing project and copy the updated `Code.gs` and `Index.html` (plus the manifest when changed); then use **Deploy → Manage deployments → Edit → New version → Deploy**. This preserves the existing `/exec` URL and TinyURL redirect. Do not choose New deployment if you want the same link. Confirm the website's owner-only access setting.
