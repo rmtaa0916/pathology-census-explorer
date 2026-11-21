@@ -22,7 +22,7 @@ This live link points to the Google Apps Script deployment, not the PHP code on 
 | Browser Print / Save as PDF | Yes | Yes |
 | Signatory names, positions and dates | Required before generation | Required before generation |
 | Calculated amounts | Optional; off by default | Optional; off by default |
-| Automatic source-schema email alerts | Not yet ported | Yes, after trigger installation |
+| Source-schema monitoring and alerting | Read-only PHP CLI monitor, private baseline and optional mail; needs host cron | Apps Script spreadsheet trigger and hourly fallback |
 
 See [Feature parity and implementation map](docs/FEATURE_PARITY.md) for concrete paths, data model and known limitations.
 
@@ -90,6 +90,10 @@ docs/FEATURE_PARITY.md        PHP and Apps Script correspondence
 
 The \`apps-script\` branch contains \`Code.gs\`, \`SchemaMonitor.gs\`, \`Index.html\` and its own tests.
 
+## Source schema monitoring
+
+PHP can now monitor source layout, headers, date ranges, formulas and additional/missing worksheets, with private baseline metadata and optional deduplicated email alerts. Routine numeric edits do not send alerts. To activate monitoring, a private PHP host and explicit CLI scheduler configuration are required; GitHub by itself does not schedule it. See [setup and cost considerations](docs/PHP_SOURCE_MONITOR.md).
+
 ## Testing
 
 \`\`\`sh
@@ -97,10 +101,11 @@ php -d zend.assertions=1 -d assert.exception=1 tests/CensusDataTest.php
 php -d zend.assertions=1 -d assert.exception=1 tests/ReportBuilderTest.php
 php -d zend.assertions=1 -d assert.exception=1 tests/CensusBatchPlannerTest.php
 node tests/FrontendReportTest.cjs
+php -d zend.assertions=1 -d assert.exception=1 tests/SourceMonitorTest.php
 \`\`\`
 
 GitHub Actions runs these checks on \`main\`. The report layout was also exercised in headless Chromium and printed to A4 PDFs using a non-sensitive local fixture.
 
 ## Safety and scope
 
-This is an editable pilot, not a patient-level laboratory system. Do not expose it publicly with real institutional data without organizational approval, per-user roles, audit logging and stronger authentication. The PHP version does **not yet** have the Apps Script source-monitor email triggers. Future months, additional tests or new columns require schema-aware changes and must be reviewed before use.
+This is an editable pilot, not a patient-level laboratory system. Do not expose it publicly with real institutional data without organizational approval, per-user roles, audit logging and stronger authentication. The PHP version includes a **read-only source schema/formula monitor**, but uses opt-in CLI polling instead of Apps Script triggers. Configure a private host cron job and optional email transport to activate it (see [PHP Source Monitor](docs/PHP_SOURCE_MONITOR.md)). Future months, additional tests or new columns require schema-aware changes and must be reviewed before use.
