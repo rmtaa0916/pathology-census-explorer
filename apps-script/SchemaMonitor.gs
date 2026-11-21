@@ -250,3 +250,24 @@ function assertSourceSafeToEdit_() {
   }
   return true;
 }
+
+
+/**
+ * Run manually in the Apps Script editor AFTER reviewing a changed layout,
+ * updating field mappings/formula handling, and redeploying the application.
+ * This never approves a layout that still violates the current code contract.
+ */
+function approveSourceBaseline() {
+  requireOwner_();
+  const current=sourceSnapshot_();
+  const status=compareSourceSnapshot_(current,null);
+  if(status.needsReview)
+    throw new Error('The current source does not match the application schema: '+
+      status.issues.map(x=>x.message).join(' '));
+  const props=PropertiesService.getScriptProperties();
+  props.setProperty(SOURCE_MONITOR.baselineKey,JSON.stringify(current));
+  props.deleteProperty(SOURCE_MONITOR.lastNotificationKey);
+  props.setProperty(SOURCE_MONITOR.lastCheckKey,new Date().toISOString());
+  return {approved:true,checkedAt:new Date().toISOString(),
+    message:'The current source structure is the new approved reference for change alerts.'};
+}
