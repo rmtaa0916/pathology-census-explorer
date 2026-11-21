@@ -50,14 +50,31 @@ header('Cache-Control: private, no-store');
 .report-preview-grid span{display:block;font-size:10px;color:#688291}.report-preview-grid b{display:block;font-size:20px;margin-top:5px;color:#1d527a}
 .report-primary{background:#185f91;border:1px solid #185f91;color:white;border-radius:8px;padding:12px 18px;font-weight:750}
 @media(max-width:700px){.lcp-brand-band{flex-direction:column;align-items:flex-start;gap:9px}.report-preview-grid{grid-template-columns:1fr 1fr}.top-actions{flex-wrap:wrap}.top-actions .sourcebtn{flex:1 1 auto;text-align:center}}
+
+.batchbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;background:#f0f7fc;border:1px solid #cadae6;border-left:4px solid #1f6d9f;border-radius:9px;padding:12px 14px;margin-bottom:18px}
+.batchbar>div{flex:1 1 230px;display:flex;flex-direction:column;gap:5px}.batchbar strong{font-size:12px;color:#215878}.batchbar span{font-size:11px;color:#638198;line-height:1.45}
+.batch-save{background:#155d92;border:0;color:white;padding:11px 14px;border-radius:8px;font-size:11px;font-weight:750}
+.batch-save:disabled,.sourcebtn:disabled{opacity:.45;cursor:not-allowed}
+.t tr.is-staged{background:#eef8ff}.staged-marker{display:block;font-size:9px;color:#186a97;font-weight:750;padding-top:3px}
+.php-edit-form{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:18px}
+.php-edit-form label{display:flex;flex-direction:column;gap:5px;color:#4b6876;font-size:11px;font-weight:750}
+.php-edit-form input,.php-edit-form select{background:white;border:1px solid #d4e0e5;border-radius:7px;padding:10px;color:#233f4f;min-width:0}
+.php-edit-form .full{grid-column:1/-1}.row-buttons{display:flex;justify-content:flex-end;gap:8px}
+.record-total{background:#f2f8fa;padding:12px;border-radius:7px;color:#516e7c;font-size:12px}
+.record-total strong{color:#174d72}.batch-review{margin:12px 0;border-bottom:1px solid #e6edef;padding:12px 0;font-size:11px;line-height:1.6}
+.batch-review div{display:flex;flex-direction:column;gap:3px;margin:6px 0}.batch-review span{color:#526e7d}
+@media(max-width:560px){.php-edit-form{grid-template-columns:1fr}.batchbar .batch-save{flex:1 1 100%}}
 </style></head>
-<body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><img src="data:image/webp;base64,UklGRuoEAABXRUJQVlA4IN4EAABwGQCdASpoADgAPsFQoUwnpKMiLJF+GPAYCWYAyBim0JSgbH3Og+v4lIT2/fO6t6r/Vct8fi/tPNj9PPGHam3y/RvBlvgtVNWBNG8p2bMxc1t8MLne3d7n+9pLitmylHF8GqrgZMwJtJLlC4gEWqLJ4Cx+M5BkshX4aCJqAr4TwBjZe3aDQWI3BFgHPC9YJxEtpG8NG9aOzxcisEOTEMLvZtctBSFQ4F0OLuESm/uj7l4TBk9QikDknh4MVkQnpAQeNxPWNnWPXZIn+YwJooeOWMh/AAD+/pOMW/UnViKtrj4EbjQ4Api7b1GUMtFRPFhSymgjiu6CzxRp5ehShohK4v4Q+/e/3o+ekL2cLA868WxEjDTB9dZbHkLT2CeJisDSdLNqcnh7Oob4zOwhiNnKLT5Q1+7O8l/FKlIZMVynlbJ6ng/fYmFF/qf23S/HUcjq4WQVFLpsc/u0xaZLuT7k4CuowIDrDok4GOF0x2rI9GmYg1wTtl2Vq16LduJGYZG+na53DuzGtxaFTz3qdqYk9PcweJOjRrIqbFFbwRMq/j5zMCTAI+YapITdypDb56POSLXUSLentRAXd/Sa1R2rdBQFxeZ6oGxbM3HdtBvAtYjpeOqx3w+Vxb4Tkr7jbC/v8VV0kYi9rSOu8TwM8z8htB+hXQq+O673SrE5DLicuGfYXzaTM38KFLMQBNB+dcdPIa+HPUMh9ZsawgJ53vi8tBHjGsuH+zvrP9RjGciMrv00mfXEF3i8P3TEzdJtKGOdGkjZpbKVddWouLLSrvMiAUkPP/g5a3ymJLe8606gNJR/Sk+HtIinYexbUADg4P1gEoQG4AL2btSAHwuFZ/OroF8yMyf/pJ4ptqvwKFu+KohUlOzXGOvdAbtzokVMTe4KBuXO5Bj1aBZZFuGTGsu8PHk38DWvxR6aD+V4WIfSJ0x1YlCkDrWSHYLEmBta4bBPNOOJ3leSaL//3t9NAUbhU2P8tKSkEFv79Tq+kq6TMW4jkJBfZRaPi5E7G/NJyDTQh+P5KUmhnE0zmBaeImU0kJyMN3ZKgbXdLftn8OT5vagunspq+VqwdmUP+ZdXwfssh985tT1XxEA5bq/CanOqt8NQx8JY+B6WL5kErOP6UoPTzbkQumec2EGK9i1oXhJu79943aiPtpBAUq8y3CCA/eO62jnQlVlLqIp8tzjX4LK9o+kaWXPq3sh3xbFnHC0zHvTUnT1aKWux0OJMe3/V++wpHWN4arHzxkhgCEj25h20g1dhPwswUwZlMt1r9ZYA52fKh91mvw/eIxvmfGd7oFX8vxVXFvz4cbZWJTinJy3VA/34FD2ptey6TTJRNtedq41LRRBh5BHWP5A50aIjvN1uGYpn4RaGqP+SoX0XMErkm8v8wUHae/aON4R6090dRIVooCVfxtapLDbET71NycG4t513fl/4Cufa3BbbuLwWBnFSnqo0TcyWpO5lgZvVjafvyzB+g3/cu4inGIeq1j53DmE/vqNuCkNOkiRzJ+wB8l+AD/Og1bCKrLnpImdeyOpY75/5zB828EZj/ifOaOJYwWNKW1JAe9j40C1uWdmlMD5wozRQYqASy0agYV+P7yoW6SLTX93qfnS6kLetLQ/0A2yn6PnQwNK8lO2gc8j28MBIgt2v+OwBsQAA" alt="Lung Center of the Philippines emblem"></div><div><b>Pathology Census Explorer</b><small>Lung Center of the Philippines</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="reports"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h8"/></svg>Formal reports</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status"><div><span class="status-dot"></span><b><?php echo currentMode()==='live'?'Google Sheets connected':'Local sample preview'; ?></b></div><p><?php echo currentMode()==='live'?'Connected working-copy dataset':'Local fixture for testing report layouts'; ?></p></div></aside><main class="main"><div class="lcp-brand-band"><div><div class="lcp-institution">LUNG CENTER OF THE PHILIPPINES</div><div class="lcp-department">Pathology and Laboratory Medicine Department</div><div class="lcp-location">Quezon Avenue Extension, Quezon City, Philippines 1100</div></div><span class="lcp-module-label">IMMUNOLOGY CENSUS</span></div><div class="topbar"><div class="breadcrumb">LCP <span>/</span> Pathology and Laboratory Medicine <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">December 2023</span><a class="sourcebtn" href="report.php?period=all">Generate A4 report</a><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="<?php echo htmlspecialchars($data['source']['google_sheets_url'], ENT_QUOTES); ?>">Open demo Sheet ↗</a> <button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">Lung Center of the Philippines · Pathology and Laboratory Medicine Department · Immunology census.
+<body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><img src="data:image/webp;base64,UklGRuoEAABXRUJQVlA4IN4EAABwGQCdASpoADgAPsFQoUwnpKMiLJF+GPAYCWYAyBim0JSgbH3Og+v4lIT2/fO6t6r/Vct8fi/tPNj9PPGHam3y/RvBlvgtVNWBNG8p2bMxc1t8MLne3d7n+9pLitmylHF8GqrgZMwJtJLlC4gEWqLJ4Cx+M5BkshX4aCJqAr4TwBjZe3aDQWI3BFgHPC9YJxEtpG8NG9aOzxcisEOTEMLvZtctBSFQ4F0OLuESm/uj7l4TBk9QikDknh4MVkQnpAQeNxPWNnWPXZIn+YwJooeOWMh/AAD+/pOMW/UnViKtrj4EbjQ4Api7b1GUMtFRPFhSymgjiu6CzxRp5ehShohK4v4Q+/e/3o+ekL2cLA868WxEjDTB9dZbHkLT2CeJisDSdLNqcnh7Oob4zOwhiNnKLT5Q1+7O8l/FKlIZMVynlbJ6ng/fYmFF/qf23S/HUcjq4WQVFLpsc/u0xaZLuT7k4CuowIDrDok4GOF0x2rI9GmYg1wTtl2Vq16LduJGYZG+na53DuzGtxaFTz3qdqYk9PcweJOjRrIqbFFbwRMq/j5zMCTAI+YapITdypDb56POSLXUSLentRAXd/Sa1R2rdBQFxeZ6oGxbM3HdtBvAtYjpeOqx3w+Vxb4Tkr7jbC/v8VV0kYi9rSOu8TwM8z8htB+hXQq+O673SrE5DLicuGfYXzaTM38KFLMQBNB+dcdPIa+HPUMh9ZsawgJ53vi8tBHjGsuH+zvrP9RjGciMrv00mfXEF3i8P3TEzdJtKGOdGkjZpbKVddWouLLSrvMiAUkPP/g5a3ymJLe8606gNJR/Sk+HtIinYexbUADg4P1gEoQG4AL2btSAHwuFZ/OroF8yMyf/pJ4ptqvwKFu+KohUlOzXGOvdAbtzokVMTe4KBuXO5Bj1aBZZFuGTGsu8PHk38DWvxR6aD+V4WIfSJ0x1YlCkDrWSHYLEmBta4bBPNOOJ3leSaL//3t9NAUbhU2P8tKSkEFv79Tq+kq6TMW4jkJBfZRaPi5E7G/NJyDTQh+P5KUmhnE0zmBaeImU0kJyMN3ZKgbXdLftn8OT5vagunspq+VqwdmUP+ZdXwfssh985tT1XxEA5bq/CanOqt8NQx8JY+B6WL5kErOP6UoPTzbkQumec2EGK9i1oXhJu79943aiPtpBAUq8y3CCA/eO62jnQlVlLqIp8tzjX4LK9o+kaWXPq3sh3xbFnHC0zHvTUnT1aKWux0OJMe3/V++wpHWN4arHzxkhgCEj25h20g1dhPwswUwZlMt1r9ZYA52fKh91mvw/eIxvmfGd7oFX8vxVXFvz4cbZWJTinJy3VA/34FD2ptey6TTJRNtedq41LRRBh5BHWP5A50aIjvN1uGYpn4RaGqP+SoX0XMErkm8v8wUHae/aON4R6090dRIVooCVfxtapLDbET71NycG4t513fl/4Cufa3BbbuLwWBnFSnqo0TcyWpO5lgZvVjafvyzB+g3/cu4inGIeq1j53DmE/vqNuCkNOkiRzJ+wB8l+AD/Og1bCKrLnpImdeyOpY75/5zB828EZj/ifOaOJYwWNKW1JAe9j40C1uWdmlMD5wozRQYqASy0agYV+P7yoW6SLTX93qfnS6kLetLQ/0A2yn6PnQwNK8lO2gc8j28MBIgt2v+OwBsQAA" alt="Lung Center of the Philippines emblem"></div><div><b>Pathology Census Explorer</b><small>Lung Center of the Philippines</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="records"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>Source records</button><button class="nav" data-nav="reports"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h8"/></svg>Formal reports</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status"><div><span class="status-dot"></span><b><?php echo currentMode()==='live'?'Google Sheets connected':'Local sample preview'; ?></b></div><p><?php echo currentMode()==='live'?'Connected working-copy dataset':'Local fixture for testing report layouts'; ?></p></div></aside><main class="main"><div class="lcp-brand-band"><div><div class="lcp-institution">LUNG CENTER OF THE PHILIPPINES</div><div class="lcp-department">Pathology and Laboratory Medicine Department</div><div class="lcp-location">Quezon Avenue Extension, Quezon City, Philippines 1100</div></div><span class="lcp-module-label">IMMUNOLOGY CENSUS</span></div><div class="topbar"><div class="breadcrumb">LCP <span>/</span> Pathology and Laboratory Medicine <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">December 2023</span><a class="sourcebtn" href="report.php?period=all">Generate A4 report</a><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="<?php echo htmlspecialchars($data['source']['google_sheets_url'], ENT_QUOTES); ?>">Open demo Sheet ↗</a> <button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">Lung Center of the Philippines · Pathology and Laboratory Medicine Department · Immunology census.
 <?php if(currentMode()!=='live'): ?><strong>Local sample-data preview.</strong> Connect the authorized Google Sheets working copy for current values.<?php else: ?>Connected to a separate working-copy spreadsheet. Original workbook remains unchanged.<?php endif; ?> <span style="color:#126a64">PHP implementation · controlled access</span></div></main></div><div class="detail-backdrop" id="backdrop"></div><div class="drawer" id="drawer"></div>
 <script>
 const DATA=<?php echo $json; ?>;
 const WRITES_ENABLED=<?php echo currentMode()==='live' && getenv('APP_WRITE_ENABLED')==='1' ? 'true':'false'; ?>;
 const CSRF=<?php echo json_encode($_SESSION['csrf']); ?>;
 const S=DATA.summary_stats, EXAMS=DATA.exams, ENTRIES=DATA.entries, RECORDS=DATA.records||[];
+const stagedChanges=new Map();
+let recordSearch='',recordPeriod='all',recordGroup='all',recordPage=0,batchSaving=false,batchUnconfirmed=false,batchNotice='';
+const pageSize=35;
 const fmtInt=n=>Number(n).toLocaleString('en-PH'),fmtMoney=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:0,maximumFractionDigits:2});
 const escapeHtml=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let activePage='overview',chartMetric='volume',tableQuery='',tableSort='volume',tableSortDir='desc';
@@ -115,6 +132,161 @@ ${intervalPanel()}
 <div class="grid2"><section class="card"><div class="card-header"><div><h3>${selected.label} · examination detail</h3><div class="minor">${fmtInt(totals[selectedInterval])} demo examinations in current category</div></div></div><div class="insight">This interval contains artificial test counts for the dashboard demonstration.</div><div class="table-wrap"><table class="t"><thead><tr><th>Examination</th><th class="right">Selected interval</th><th class="right">December total</th></tr></thead><tbody>${tests.map(t=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(t.test)}">${escapeHtml(t.test)}</button></td><td class="right ${t.weeks[selectedInterval]?'period-on':''}">${fmtInt(t.weeks[selectedInterval])}</td><td class="right">${fmtInt(t.weeks.reduce((a,b)=>a+b,0))}</td></tr>`).join('')||'<tr><td colspan="3">No test entries</td></tr>'}</tbody></table></div></section>
 <section class="card"><div class="card-header"><div><h3>Demo reporting matrix</h3><div class="minor">All four lab-defined date ranges</div></div></div><div class="table-wrap"><table class="t period-table"><thead><tr><th>Period</th><th class="right">Count</th><th>Status</th></tr></thead><tbody>${INTERVALS.map((it,i)=>`<tr><td>${it.label}</td><td class="right">${fmtInt(totals[i])}</td><td>Synthetic</td></tr>`).join('')}<tr><td><b>December total</b></td><td class="right"><b>${fmtInt(total)}</b></td><td>Calculated</td></tr></tbody></table></div><div class="period-note">The periods are not equal length. For meaningful trend analysis, use verified real source data and normalize by day.</div></section></div>`}
 
+
+const editFields=['test','patientGroup','billing','priority','count','rate'];
+function recordInputs(record){return Object.fromEntries(editFields.map(f=>[f,record[f]]));}
+function checkedRecord(values){
+  return /^[A-Za-z0-9][A-Za-z0-9 .()+/_-]{0,79}$/.test(values.test) &&
+    Number.isInteger(values.count)&&values.count>=0&&values.count<=100000 &&
+    Number.isFinite(values.rate)&&values.rate>=0&&values.rate<=1000000 &&
+    Math.abs(values.rate*100-Math.round(values.rate*100))<1e-6 &&
+    ((['Inpatient','Outpatient'].includes(values.patientGroup)&&['CHA','PAY'].includes(values.billing)&&['STAT','ROUTINE'].includes(values.priority)) ||
+     (values.patientGroup==='Employee'&&values.billing==='QFS'&&values.priority==='QFS'));
+}
+function recordOptions(options,selected){
+  return options.map(x=>`<option value="${escapeHtml(x)}" ${x===selected?'selected':''}>${escapeHtml(x)}</option>`).join('');
+}
+function records(){
+  const term=recordSearch.trim().toLowerCase();
+  const matches=RECORDS.filter(r=>(recordPeriod==='all'||r.period===recordPeriod)&&
+    (recordGroup==='all'||r.patientGroup===recordGroup)&&
+    (!term||[r.test,r.billing,r.patientGroup,r.priority,String(r.sheetRow)].some(x=>String(x).toLowerCase().includes(term))));
+  const pages=Math.max(1,Math.ceil(matches.length/pageSize));
+  recordPage=Math.min(recordPage,pages-1);
+  const visible=matches.slice(recordPage*pageSize,(recordPage+1)*pageSize);
+  return `${pageIntro('Data management / Google Sheets','Source record editor','Edit existing examination records directly in the Explorer. Stage multiple changes, then save them together.')}
+    <div class="warning"><span class="warn-ico">i</span><div><strong>What can be changed</strong>
+      <p>Examination, patient group, billing, priority, count and rate (D:I). Reporting dates, formulas and metadata remain read-only. The original workbook is not modified.</p></div></div>
+    ${!WRITES_ENABLED?'<div class="alertline">Preview mode: saving to Google Sheets is disabled. Enable authenticated live editing to modify records.</div>':''}
+    <section class="card"><div class="controlbar">
+      <input id="recordSearch" class="search" placeholder="Search examination, billing or row" value="${escapeHtml(recordSearch)}">
+      <select id="recordPeriod" class="select">${recordOptions(['all',...INTERVALS.map(i=>i.label)],recordPeriod)}</select>
+      <select id="recordGroup" class="select">${recordOptions(['all','Inpatient','Outpatient','Employee'],recordGroup)}</select>
+      <span class="smalltag">${matches.length} source records</span></div>
+    <div class="table-wrap"><table class="t"><thead><tr><th>Period / row</th><th>Examination</th><th>Group</th>
+      <th>Billing · priority</th><th class="right">Count</th><th class="right">Rate</th><th class="right">Amount</th><th>Modify</th></tr></thead><tbody>
+      ${visible.map(r=>{const staged=stagedChanges.get(r.sheetRow);const v=staged?{...r,...staged.values}:r;
+        return `<tr class="${staged?'is-staged':''}"><td><strong>${escapeHtml(r.period)}</strong><div class="fine">Row ${r.sheetRow}</div></td>
+         <td>${escapeHtml(v.test)}${staged?'<span class="staged-marker">UNSAVED</span>':''}</td>
+         <td>${escapeHtml(v.patientGroup)}</td><td>${escapeHtml(v.billing)} · ${escapeHtml(v.priority)}</td>
+         <td class="right">${fmtInt(v.count)}</td><td class="right">${fmtMoney(v.rate)}</td>
+         <td class="right">${fmtMoney(v.count*v.rate)}</td>
+         <td><button type="button" class="sourcebtn" data-edit-source="${r.sheetRow}" ${WRITES_ENABLED?'':'disabled'}>${staged?'Edit staged':'Edit'}</button></td></tr>`;
+      }).join('')||'<tr><td colspan="8" class="empty">No matching records.</td></tr>'}
+    </tbody></table></div><div class="period-head"><span class="fine">Page ${recordPage+1} of ${pages} · 35 records per page</span>
+      <div><button class="sourcebtn" data-record-page="-1" ${recordPage===0?'disabled':''}>Previous</button>
+      <button class="sourcebtn" data-record-page="1" ${recordPage>=pages-1?'disabled':''}>Next</button></div>
+    </div></section>`;
+}
+function batchBar(){
+  const n=stagedChanges.size;
+  if(!n&&!batchNotice)return '';
+  return `<div class="batchbar" role="status"><div><strong>${n} staged record${n===1?'':'s'}</strong>
+    <span>${escapeHtml(batchNotice||'Pending changes are local until you select Save all.')}</span></div>
+    ${n?`<button type="button" class="sourcebtn" data-review-batch>Review</button>
+      <button type="button" class="sourcebtn" data-clear-batch ${batchSaving?'disabled':''}>Discard</button>
+      <button type="button" class="batch-save" data-save-batch ${batchSaving||batchUnconfirmed?'disabled':''}>
+        ${batchSaving?'Saving…':'Save all ('+n+')'}</button>`:''}
+    ${batchUnconfirmed?'<button type="button" class="sourcebtn" data-reconcile-batch>Refresh to reconcile</button>':''}
+  </div>`;
+}
+function editSourceRecord(rowNumber){
+  if(!WRITES_ENABLED||batchSaving||batchUnconfirmed)return;
+  const record=RECORDS.find(r=>r.sheetRow===rowNumber);
+  if(!record)return;
+  const starting={...(stagedChanges.get(rowNumber)?.values||recordInputs(record))};
+  const combos={Inpatient:['CHA','PAY'],Outpatient:['CHA','PAY'],Employee:['QFS']};
+  const drawer=document.getElementById('drawer');
+  drawer.innerHTML=`<button type="button" class="close" id="closeDrawer">Close ×</button>
+    <p class="eyebrow">Source record · staged editing</p>
+    <h2 style="font-size:24px;margin:0 0 5px">${escapeHtml(record.test)}</h2>
+    <p class="fine">${escapeHtml(record.period)}, 2023 · Sheet row ${record.sheetRow}</p>
+    <form id="phpEditForm" class="php-edit-form">
+      <label class="full">Examination <input name="test" maxlength="80" required value="${escapeHtml(starting.test)}"></label>
+      <label>Patient group <select name="patientGroup">${recordOptions(['Inpatient','Outpatient','Employee'],starting.patientGroup)}</select></label>
+      <label>Billing <select name="billing">${recordOptions(combos[starting.patientGroup],starting.billing)}</select></label>
+      <label>Priority <select name="priority">${recordOptions(starting.patientGroup==='Employee'?['QFS']:['STAT','ROUTINE'],starting.priority)}</select></label>
+      <label>Test count <input name="count" type="number" min="0" max="100000" step="1" required value="${starting.count}"></label>
+      <label>Unit rate (₱) <input name="rate" type="number" min="0" max="1000000" step=".01" required value="${starting.rate}"></label>
+      <div class="full record-total">Calculated amount: <strong id="phpCalculated">${fmtMoney(starting.count*starting.rate)}</strong></div>
+      <div class="full row-buttons"><button type="button" class="sourcebtn" id="cancelRecord">Cancel</button>
+        <button type="submit" class="batch-save">Stage change</button></div>
+      <div id="phpEditError" class="fine full" role="alert"></div>
+    </form>`;
+  drawer.classList.add('show');document.getElementById('backdrop').classList.add('show');
+  drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
+  drawer.querySelector('#cancelRecord').addEventListener('click',closeDrawer);
+  const form=drawer.querySelector('#phpEditForm');
+  const field=name=>form.elements.namedItem(name);
+  const values=()=>({
+    test:field('test').value.trim(),patientGroup:field('patientGroup').value,
+    billing:field('billing').value,priority:field('priority').value,
+    count:Number(field('count').value),rate:Number(field('rate').value)
+  });
+  field('patientGroup').addEventListener('change',()=>{
+    const group=field('patientGroup').value;
+    field('billing').innerHTML=recordOptions(combos[group],combos[group][0]);
+    field('priority').innerHTML=recordOptions(group==='Employee'?['QFS']:['STAT','ROUTINE'],
+      group==='Employee'?'QFS':'STAT');
+  });
+  form.addEventListener('input',()=>{
+    const v=values();drawer.querySelector('#phpCalculated').textContent=fmtMoney(v.count*v.rate);
+  });
+  form.addEventListener('submit',event=>{
+    event.preventDefault();if(!form.reportValidity())return;
+    const v=values();
+    if(!checkedRecord(v)){drawer.querySelector('#phpEditError').textContent='Invalid input or category combination.';return;}
+    if(stagedChanges.size>=100&&!stagedChanges.has(rowNumber)){
+      drawer.querySelector('#phpEditError').textContent='Maximum 100 source rows per batch.';return;
+    }
+    const original=recordInputs(record);
+    if(editFields.every(f=>v[f]===original[f]))stagedChanges.delete(rowNumber);
+    else stagedChanges.set(rowNumber,{sheetRow:rowNumber,period:record.period,expected:original,values:v});
+    closeDrawer();batchNotice='Edit staged. Continue selecting records or Save all.';
+    render();
+  });
+}
+function reviewPHPBatch(){
+  if(!stagedChanges.size)return;
+  const drawer=document.getElementById('drawer');
+  const changes=[...stagedChanges.values()].sort((a,b)=>a.sheetRow-b.sheetRow);
+  drawer.innerHTML=`<button id="closeDrawer" class="close">Close ×</button>
+    <p class="eyebrow">Review pending changes</p><h2>${changes.length} records</h2>
+    <p class="fine">All changes will be submitted in one authenticated request. No cells are changed until Save all.</p>
+    ${changes.map(c=>`<div class="batch-review"><strong>${escapeHtml(c.values.test)}</strong> · ${escapeHtml(c.period)} · Row ${c.sheetRow}
+      <div>${editFields.filter(f=>c.expected[f]!==c.values[f]).map(f=>`<span>${escapeHtml(f)}: ${escapeHtml(c.expected[f])} → <b>${escapeHtml(c.values[f])}</b></span>`).join('')}</div>
+      <button class="sourcebtn" data-drop-staged="${c.sheetRow}">Remove</button></div>`).join('')}
+    <button class="batch-save" id="submitReviewedBatch">Save all ${changes.length} records</button>`;
+  drawer.classList.add('show');document.getElementById('backdrop').classList.add('show');
+  drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
+  drawer.querySelectorAll('[data-drop-staged]').forEach(b=>b.addEventListener('click',()=>{
+    stagedChanges.delete(Number(b.dataset.dropStaged));closeDrawer();render();if(stagedChanges.size)reviewPHPBatch();
+  }));
+  drawer.querySelector('#submitReviewedBatch').addEventListener('click',()=>{closeDrawer();savePHPBatch();});
+}
+async function savePHPBatch(){
+  if(!WRITES_ENABLED||!stagedChanges.size||batchSaving||batchUnconfirmed)return;
+  if(!confirm('Save all '+stagedChanges.size+' pending changes to Google Sheets?'))return;
+  batchSaving=true;batchNotice='Validating source values and submitting the batch…';render();
+  try{
+    const response=await fetch('api/batch-update.php',{
+      method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({csrf:CSRF,changes:[...stagedChanges.values()]})
+    });
+    const result=await response.json();
+    if(!response.ok||!result.success||result.updatedCount!==stagedChanges.size)
+      throw new Error(result.error||'Save could not be confirmed.');
+    stagedChanges.clear();batchSaving=false;batchNotice='';
+    location.reload();
+  }catch(error){
+    batchSaving=false;batchUnconfirmed=true;
+    batchNotice='Save result uncertain or rejected: '+String(error?.message||error)+
+      '. Refresh the dataset and verify affected rows before trying again.';
+    render();
+  }
+}
+
 let reportPeriod='all',reportDetail=false;
 function reports(){
   const periodMeta=[{label:'Full coverage — Dec 1–31, 2023',id:'all'},
@@ -144,13 +316,30 @@ function reports(){
       <p class="fine">The report opens as an authenticated, printable A4 page. Select Print / Save PDF to create a PDF on your device. Sign-off fields are intentionally blank until verified.</p>
     </div>`;
 }
-function render(){document.getElementById('content').innerHTML=({overview,periods,examinations,breakdown,reports,quality})[activePage]();}
-document.getElementById('content').addEventListener('click',e=>{const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
-document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
+function render(){document.getElementById('content').innerHTML=batchBar()+({overview,periods,examinations,breakdown,records,reports,quality})[activePage]();}
+document.getElementById('content').addEventListener('click',e=>{
+const row=e.target.closest('[data-edit-source]');if(row){editSourceRecord(Number(row.dataset.editSource));return;}
+const pg=e.target.closest('[data-record-page]');if(pg){recordPage=Math.max(0,recordPage+Number(pg.dataset.recordPage));render();return;}
+if(e.target.closest('[data-review-batch]')){reviewPHPBatch();return;}
+if(e.target.closest('[data-save-batch]')){savePHPBatch();return;}
+if(e.target.closest('[data-clear-batch]')){
+  if(confirm('Discard all staged edits without saving?')){stagedChanges.clear();batchNotice='Unsaved edits discarded.';render();}return;
+}
+if(e.target.closest('[data-reconcile-batch]')){location.reload();return;}
+const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
+document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='recordSearch'){
+ const value=e.target.value,pos=e.target.selectionStart;recordSearch=value;recordPage=0;render();
+ const input=document.getElementById('recordSearch');if(input){input.focus();input.setSelectionRange(pos,pos);}return;}
+if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
 );
 document.getElementById('content').addEventListener('change',e=>{
+if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render();return;}
+if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();return;}
 if(e.target.id==='reportPeriod'){reportPeriod=e.target.value;render();return;}
 if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}
 if(e.target.id==='sortExams'){tableSort=e.target.value;render()}
 });render();
+window.addEventListener('beforeunload',event=>{
+ if(stagedChanges.size>0||batchSaving){event.preventDefault();event.returnValue='';}
+});
 </script></body></html>
