@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+*.key
+*credentials*.json
+*.xls
+*.xlsx
+node_modules
+vendor
+tests
+docs
+README.md
