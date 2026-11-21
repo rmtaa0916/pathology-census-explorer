@@ -181,7 +181,8 @@ function quality(){
  <p class="fine">These checks do not inspect remote worksheet formulas or structural changes. Source-schema protection remains enforced by the PHP batch-write planner when saving.</p>
  <div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`;
 }
-let drawerReturnFocus=null;
+let drawerReturnFocus=null,drawerStartingValues=null;
+function recordFormDirty(form,original){return !!(form&&original&&['test','patientGroup','billing','priority','count','rate'].some(field=>{const element=form.elements.namedItem(field);if(!element)return false;const value=['count','rate'].includes(field)?Number(element.value):element.value.trim();return original[field]!==value;}));}
 function activateDrawer(title){
   const drawer=document.getElementById('drawer');
   if(!drawer.innerHTML.trim()){
@@ -249,14 +250,17 @@ function showExam(name,index=selectedInterval){
   drawer.querySelectorAll('[data-drawer-edit-row]').forEach(button=>
     button.addEventListener('click',()=>editSourceRecord(Number(button.dataset.drawerEditRow))));
 }
-function closeDrawer(){
+function closeDrawer(force=false){
   const drawer=document.getElementById('drawer');
+  const form=drawer.querySelector('#phpEditForm');
+  if(force!==true&&form&&recordFormDirty(form,drawerStartingValues)&&!confirm('Discard unsaved record changes?'))return false;
   document.getElementById('backdrop').classList.remove('show');
   drawer.classList.remove('show');
   drawer.setAttribute('aria-hidden','true');
   drawer.removeAttribute('aria-label');
   drawer.removeAttribute('aria-modal');
   drawer.innerHTML='';
+  drawerStartingValues=null;
   if(drawerReturnFocus&&drawerReturnFocus.isConnected&&typeof drawerReturnFocus.focus==='function'){
     drawerReturnFocus.focus({preventScroll:true});
   }
@@ -342,6 +346,7 @@ function editSourceRecord(rowNumber){
   const record=RECORDS.find(r=>r.sheetRow===rowNumber);
   if(!record)return;
   const starting={...(stagedChanges.get(rowNumber)?.values||recordInputs(record))};
+  drawerStartingValues={...starting};
   const combos={Inpatient:['CHA','PAY'],Outpatient:['CHA','PAY'],Employee:['QFS']};
   const drawer=document.getElementById('drawer');
   drawer.innerHTML=`<button type="button" class="close" id="closeDrawer">Close ×</button>
@@ -389,7 +394,7 @@ function editSourceRecord(rowNumber){
     const original=recordInputs(record);
     if(editFields.every(f=>v[f]===original[f]))stagedChanges.delete(rowNumber);
     else stagedChanges.set(rowNumber,{sheetRow:rowNumber,period:record.period,expected:original,values:v});
-    closeDrawer();batchNotice='Edit staged. Continue selecting records or Save all.';
+    closeDrawer(true);batchNotice='Edit staged. Continue selecting records or Save all.';
     render();
   });
 }
@@ -563,6 +568,7 @@ if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}
 if(e.target.id==='sortExams'){tableSort=e.target.value;render()}
 });render();
 window.addEventListener('beforeunload',event=>{
- if(stagedChanges.size>0||batchSaving){event.preventDefault();event.returnValue='';}
+ const form=document.getElementById('phpEditForm');
+ if(stagedChanges.size>0||batchSaving||recordFormDirty(form,drawerStartingValues)){event.preventDefault();event.returnValue='';}
 });
 </script></body></html>
