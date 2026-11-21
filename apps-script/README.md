@@ -22,7 +22,7 @@ Data from a copy can be used to demonstrate the full functionality. If the copy 
 
 ## Capabilities
 
-Six interactive views: Overview, Reporting intervals, Examinations, Workload & income, Source records and Data quality. Views share source data and support filters, rankings, drill-down, editing, and refresh.
+Seven interactive views: Overview, Reporting intervals, Examinations, Workload & income, Source records, Formal reports and Data quality. Views share source data and support filters, rankings, drill-down, editing, and refresh.
 
 Only columns **D:I** can be edited from the application:
 
@@ -42,13 +42,32 @@ The backend pins the spreadsheet ID and exact named tabs, checks source row iden
 
 Saving confirms the write before refreshing the dashboard. Uncertain responses are resolved by rereading Sheets before another edit. The UI supports unsaved-change warnings, single-record Undo with stale-value protection, and quality checks of formulas, categories, duplicate keys, amounts, numeric inputs, reporting ranges and totals.
 
+
+## LCP branding and A4 formal reports
+
+The header and printable reports use the **Lung Center of the Philippines** institutional emblem sourced from the connected LCP letterhead and the department name **Pathology and Laboratory Medicine Department**. The header identifies the Immunology Census module. The report uses a self-contained, embedded emblem; no public image server or third-party CDN is required.
+
+Open **Formal reports** in the app, choose one reporting interval or **full December 1–31, 2023 coverage**, and optionally include the detailed examination × group × billing × priority appendix. Select **Generate A4 report**. The app rereads Google Sheets before building a report; no pending unsaved edits or outstanding source-structure alerts are permitted. An A4 print preview opens in the same tab; choose **Print / Save PDF** to save through your browser.
+
+The report includes institutional header, coverage, generation date, totals and calculated amounts, reporting interval breakdown (full coverage only), patient-group/billing/priority summaries, examination-level totals, optional appendix and blank prepared/reviewed fields. It is designated for verification, not as a signed/approved hospital report. Counts are examinations, not unique patients; amounts are not necessarily collected income.
+
+**PHP parity:** The \`main\` branch implements the same reporting model using native \`src/ReportBuilder.php\` and authenticated \`public/report.php\`, so PHP collaborators can maintain the feature without rewriting the Apps Script implementation.
+
+## Multi-edit Save all
+
+Use **Source records → Edit → Stage for Save all** on as many existing records as required, up to 100. Changes remain local in the browser until **Save all**, with a review screen and unsaved markers. A batch generates one Apps Script server call, validates all changed rows and formulas first, and groups adjacent writes to reduce spreadsheet operations. A full data refresh runs once after saving.
+
+The Apps Script API is \`updateRecordsBatch({changes:[...]})\` in \`Code.gs\`. Conflicts reject the batch before writing. Google Sheets is not a transactional database across separate \`setValues\` calls; if a write fails, rollback is best effort and an uncertain result requires reconciliation. Do not retry blindly.
+
+**PHP parity:** \`main\` includes \`public/api/batch-update.php\`, \`src/CensusBatchPlanner.php\` and \`src/SheetsClient.php\` for the corresponding staged editing workflow. PHP sends one atomic Google Sheets \`spreadsheets.batchUpdate\` request after its preflight validation.
+
 ## Primary editing interface and source-change alerts
 
 The **dashboard is the primary interface** for modifying supported census values. Google Sheets remains the backing database, not the normal data-entry screen. The current editor supports **existing row inputs D:I**. It does not yet add new examination rows, periods, columns, or formulas.
 
 To protect users from unexpected spreadsheet revisions, the new `SchemaMonitor.gs` watches for tab, column, row, reporting-date and formula changes. The **Data quality** screen shows source compatibility and a **Check source** action. Unreviewed changes pause edits rather than risking a write to the wrong column.
 
-To activate automatic email notifications, **copy `SchemaMonitor.gs` into the existing Apps Script project, update the OAuth manifest, then manually run `installSourceMonitor` once and approve the permissions**. This creates a spreadsheet change trigger plus an hourly backup scan. Ordinary count/rate changes do not send schema-alert emails; structural changes do. It does not automatically rewrite application code.
+To activate automatic email notifications, **copy `SchemaMonitor.gs` into the existing Apps Script project, update the OAuth manifest, then manually run `installSourceMonitor` once (if not already installed) and approve the permissions**. This creates a spreadsheet change trigger plus an hourly backup scan. Ordinary count/rate changes do not send schema-alert emails; structural changes do. It does not automatically rewrite application code.
 
 See [Source monitor setup and change-handling guide](docs/SOURCE_MONITOR.md) for details, including how to approve a revised schema after code updates.
 
@@ -58,8 +77,8 @@ See [Source monitor setup and change-handling guide](docs/SOURCE_MONITOR.md) for
 2. Paste the current `Code.gs`, `Index.html`, and `SchemaMonitor.gs` from this branch. Update `appsscript.json` to include trigger-management and email permissions.
 3. Save. To preserve the existing public-facing alias, choose **Deploy → Manage deployments → Edit → New version → Deploy**. Do not create a new deployment unless you want a new `/exec` URL.
 4. Keep **Execute as: Me** and **Who has access: Only myself** during this pilot. The server additionally verifies the active user's email.
-5. Run `installSourceMonitor` once in the editor and grant the requested permissions to activate change notifications.
-5. Confirm that the existing working Sheet is connected. Test a single edit, formula calculation, refresh, and Undo using a non-sensitive row.
+5. If the source monitor is not already installed, run `installSourceMonitor` once and approve trigger/email permissions. Existing installed triggers do not need to be re-created.
+6. Verify a staged multi-record save and undo/reconciliation using non-sensitive rows, then generate both selected-period and full-coverage A4 reports.
 
 GitHub commits do **not** automatically update the live Apps Script deployment. The existing TinyURL forwards to the current `/exec` URL; updating that deployment keeps the alias.
 
