@@ -102,6 +102,175 @@ function periods(){const rows=periodEntries(),totals=periodSums(rows),tests=peri
 ${intervalPanel()}
 <div class="grid2"><section class="card"><div class="card-header"><div><h3>${selected.label} · examination detail</h3><div class="minor">${fmtInt(totals[selectedInterval])} demo examinations in current category</div></div></div><div class="insight">This interval contains artificial test counts for the dashboard demonstration.</div><div class="table-wrap"><table class="t"><thead><tr><th>Examination</th><th class="right">Selected interval</th><th class="right">December total</th></tr></thead><tbody>${tests.map(t=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(t.test)}">${escapeHtml(t.test)}</button></td><td class="right ${t.weeks[selectedInterval]?'period-on':''}">${fmtInt(t.weeks[selectedInterval])}</td><td class="right">${fmtInt(t.weeks.reduce((a,b)=>a+b,0))}</td></tr>`).join('')||'<tr><td colspan="3">No test entries</td></tr>'}</tbody></table></div></section>
 <section class="card"><div class="card-header"><div><h3>Demo reporting matrix</h3><div class="minor">All four lab-defined date ranges</div></div></div><div class="table-wrap"><table class="t period-table"><thead><tr><th>Period</th><th class="right">Count</th><th>Status</th></tr></thead><tbody>${INTERVALS.map((it,i)=>`<tr><td>${it.label}</td><td class="right">${fmtInt(totals[i])}</td><td>Synthetic</td></tr>`).join('')}<tr><td><b>December total</b></td><td class="right"><b>${fmtInt(total)}</b></td><td>Calculated</td></tr></tbody></table></div><div class="period-note">The periods are not equal length. For meaningful trend analysis, use verified real source data and normalize by day.</div></section></div>`}
+
+let recordQuery='',recordPeriod='all',recordGroup='all',recordPage=0;
+const recordsPerPage=35;
+function recordOptions(items,selected){
+  return items.map(x=>`<option value="${escapeHtml(x)}" ${selected===x?'selected':''}>${escapeHtml(x)}</option>`).join('');
+}
+function records(){
+  const query=recordQuery.trim().toLowerCase();
+  const all=RECORDS.filter(r=>
+    (recordPeriod==='all'||r.period===recordPeriod) &&
+    (recordGroup==='all'||r.patientGroup===recordGroup) &&
+    (!query||[r.test,r.patientGroup,r.billing,r.priority,String(r.sheetRow)].some(v=>String(v).toLowerCase().includes(query)))
+  );
+  const pages=Math.max(1,Math.ceil(all.length/recordsPerPage));
+  recordPage=Math.min(recordPage,pages-1);
+  const visible=all.slice(recordPage*recordsPerPage,(recordPage+1)*recordsPerPage);
+  const volume=all.reduce((a,r)=>a+r.count,0);
+  const amount=all.reduce((a,r)=>a+r.amount,0);
+  return `${pageIntro('Synthetic dataset / controlled editing','Source record editor',
+    'Edit original inputs in the demo Sheet. All other charts, totals and calculated amounts recalculate automatically.')}
+    <div class="record-note"><strong>Editable:</strong> examination name, patient group, billing, priority, test count and illustrative rate.
+    <strong>Read-only:</strong> period/date boundaries, amount formulas, synthetic marker and dashboard totals.
+    Changes are validated against the current Sheet before saving.</div>
+    <div class="kpi-grid">
+      ${metricCard('Matching source rows',fmtInt(all.length),'of '+fmtInt(RECORDS.length)+' synthetic rows',true)}
+      ${metricCard('Matching examination count',fmtInt(volume),'Calculated from the filtered rows')}
+      ${metricCard('Matching illustrative amount',fmtMoney(amount),'Calculated; not actual billing')}
+      ${metricCard('Viewing page',recordPage+1+' / '+pages,recordsPerPage+' rows per page')}
+    </div>
+    <div class="card">
+      <div class="controlbar">
+        <input class="search" id="recordSearch" aria-label="Find source record"
+          placeholder="Search test, billing or Sheet row" value="${escapeHtml(recordQuery)}">
+        <select class="select" id="recordPeriod" aria-label="Filter reporting interval">
+          ${recordOptions(['all',...INTERVALS.map(i=>i.label)],recordPeriod)}
+        </select>
+        <select class="select" id="recordGroup" aria-label="Filter patient group">
+          ${recordOptions(['all','Inpatient','Outpatient','Employee'],recordGroup)}
+        </select>
+        <span class="smalltag">${fmtInt(all.length)} matching records</span>
+      </div>
+      <div class="table-wrap"><table class="t"><thead><tr>
+        <th>Period / Sheet row</th><th>Examination</th><th>Patient group</th>
+        <th>Billing · Priority</th><th class="right">Count</th>
+        <th class="right">Rate</th><th class="right">Calculated amount</th><th>Edit</th>
+      </tr></thead><tbody>
+        ${visible.map(r=>`<tr>
+          <td><strong>${escapeHtml(r.period)}</strong><div class="fine">Row ${r.sheetRow}</div></td>
+          <td><strong>${escapeHtml(r.test)}</strong></td>
+          <td>${escapeHtml(r.patientGroup)}</td>
+          <td>${escapeHtml(r.billing)} · ${escapeHtml(r.priority)}</td>
+          <td class="right">${fmtInt(r.count)}</td>
+          <td class="right">${fmtMoney(r.rate)}</td>
+          <td class="right">${fmtMoney(r.amount)}</td>
+          <td><button type="button" class="edit-row-btn" data-record-edit="${r.sheetRow}">Edit</button></td>
+        </tr>`).join('')||'<tr><td colspan="8" class="empty">No records match these filters.</td></tr>'}
+      </tbody></table></div>
+      <div class="period-head">
+        <p class="fine">Page ${recordPage+1} of ${pages} · source values synchronized with the Google Sheet after each save.</p>
+        <div class="record-actions">
+          <button type="button" class="sourcebtn" data-record-page="-1" ${recordPage===0?'disabled':''}>Previous</button>
+          <button type="button" class="sourcebtn" data-record-page="1" ${recordPage>=pages-1?'disabled':''}>Next</button>
+        </div>
+      </div>
+    </div>`;
+}
+function openRecordEditor(sheetRow){
+  const record=RECORDS.find(r=>r.sheetRow===sheetRow);
+  if(!record){alert('Source record is unavailable; refresh the dashboard.');return;}
+  const drawer=document.getElementById('drawer');
+  const exams=[...new Set(RECORDS.map(r=>r.test))].sort();
+  const combos={Inpatient:['CHA','PAY'],Outpatient:['CHA','PAY'],Employee:['QFS']};
+  drawer.innerHTML=`<button type="button" class="close" id="closeDrawer">Close ×</button>
+    <p class="eyebrow">Edit synthetic source values</p>
+    <h2 style="font-size:24px;letter-spacing:-.7px;margin:0 0 9px">${escapeHtml(record.test)}</h2>
+    <p class="fine">Source row ${record.sheetRow} · ${escapeHtml(record.period)}, 2023 · ${escapeHtml(record.patientGroup)}</p>
+    <form id="recordEditForm" class="record-editor">
+      <label class="full">Examination name
+        <input name="test" maxlength="80" required list="examChoices" value="${escapeHtml(record.test)}" autocomplete="off">
+      </label>
+      <datalist id="examChoices">${exams.map(t=>`<option value="${escapeHtml(t)}"></option>`).join('')}</datalist>
+      <label>Patient group
+        <select name="patientGroup">${recordOptions(['Inpatient','Outpatient','Employee'],record.patientGroup)}</select>
+      </label>
+      <label>Billing
+        <select name="billing">${recordOptions(combos[record.patientGroup],record.billing)}</select>
+      </label>
+      <label>Priority
+        <select name="priority">${recordOptions(record.patientGroup==='Employee'?['QFS']:['STAT','ROUTINE'],record.priority)}</select>
+      </label>
+      <label>Test count
+        <input name="count" required type="number" min="0" max="100000" step="1" inputmode="numeric" value="${record.count}">
+      </label>
+      <label>Illustrative unit rate (₱)
+        <input name="rate" required type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="${record.rate}">
+      </label>
+      <div class="full record-amount">
+        <span>Calculated amount (read-only)</span>
+        <strong id="recordComputedAmount">${fmtMoney(record.amount)}</strong>
+        <div class="fine">Count × rate; Google Sheets maintains the source formula.</div>
+      </div>
+      <div class="record-actions">
+        <button type="button" class="close" id="cancelRecordEdit">Cancel</button>
+        <button type="submit" class="save" id="saveRecordButton">Save changes</button>
+      </div>
+      <div class="record-status full" id="recordEditStatus" role="status"></div>
+    </form>
+    <p class="fine">Reporting period, date range, formula and demo-only status cannot be edited here.</p>`;
+  drawer.classList.add('show');
+  document.getElementById('backdrop').classList.add('show');
+  drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
+  drawer.querySelector('#cancelRecordEdit').addEventListener('click',closeDrawer);
+  const form=drawer.querySelector('#recordEditForm');
+  const field=name=>form.elements.namedItem(name);
+  const setChoices=(select,choices,value)=>{
+    select.innerHTML=recordOptions(choices,choices.includes(value)?value:choices[0]);
+  };
+  field('patientGroup').addEventListener('change',()=>{
+    const g=field('patientGroup').value;
+    setChoices(field('billing'),combos[g],field('billing').value);
+    setChoices(field('priority'),g==='Employee'?['QFS']:['STAT','ROUTINE'],field('priority').value);
+  });
+  form.addEventListener('input',()=>{
+    const n=Number(field('count').value);
+    const rate=Number(field('rate').value);
+    drawer.querySelector('#recordComputedAmount').textContent=Number.isFinite(n*rate)?fmtMoney(n*rate):'—';
+  });
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    if(!form.reportValidity())return;
+    const values={
+      test:field('test').value.trim(),patientGroup:field('patientGroup').value,
+      billing:field('billing').value,priority:field('priority').value,
+      count:Number(field('count').value),rate:Number(field('rate').value)
+    };
+    if(!/^[A-Za-z0-9][A-Za-z0-9 .()+/_-]{0,79}$/.test(values.test) ||
+       !Number.isInteger(values.count) || values.count<0 || values.count>100000 ||
+       !Number.isFinite(values.rate) || values.rate<0 || values.rate>1000000 ||
+       Math.abs(values.rate*100-Math.round(values.rate*100))>.000001){
+      drawer.querySelector('#recordEditStatus').textContent='Please enter a valid examination name, nonnegative whole count and rate of up to two decimal places.';
+      return;
+    }
+    const btn=drawer.querySelector('#saveRecordButton');
+    const note=drawer.querySelector('#recordEditStatus');
+    btn.disabled=true;note.textContent='Saving to Google Sheets…';
+    try{
+      const expected={
+        test:record.test,patientGroup:record.patientGroup,billing:record.billing,
+        priority:record.priority,count:record.count,rate:record.rate
+      };
+      await new Promise((resolve,reject)=>google.script.run
+        .withSuccessHandler(resolve).withFailureHandler(reject)
+        .updateDemoRecord({sheetRow:record.sheetRow,period:record.period,expected,values}));
+      note.textContent='Saved. Updating the dashboard…';
+      const refreshed=await new Promise((resolve,reject)=>google.script.run
+        .withSuccessHandler(resolve).withFailureHandler(reject).getDataset());
+      DATA=refreshed;S=refreshed.summary_stats;EXAMS=refreshed.exams;
+      ENTRIES=refreshed.entries;RECORDS=refreshed.records||[];
+      breakouts=createBreakouts();
+      closeDrawer();render();
+      document.getElementById('content').insertAdjacentHTML('afterbegin',
+        '<div class="record-note" role="status">Changes saved to the synthetic Google Sheet. Calculated views are refreshed.</div>');
+    }catch(error){
+      note.textContent='Save failed: '+((error&&error.message)||String(error));
+      btn.disabled=false;
+    }
+  });
+}
+
 function render(){document.getElementById('content').innerHTML=({overview,periods,examinations,breakdown,records,quality})[activePage]();}
 document.getElementById('content').addEventListener('click',e=>{const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
 document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='recordSearch'){const v=e.target.value,pos=e.target.selectionStart;recordQuery=v;recordPage=0;render();const el=document.getElementById('recordSearch');if(el){el.focus();el.setSelectionRange(pos,pos);}return;}if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
