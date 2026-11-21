@@ -50,12 +50,16 @@ function sourceSnapshot_() {
     const headers = data.getRange(CENSUS.headerRow, 1, 1,
       SOURCE_MONITOR.expectedDataColumns).getDisplayValues()[0];
     const scan = data.getDataRange();
+    const values = scan.getValues();
     snapshot.data = {
       lastRow: data.getLastRow(),
       lastColumn: data.getLastColumn(),
+      maxRows: data.getMaxRows(),
+      maxColumns: data.getMaxColumns(),
       headers,
       allFormulaDigest: sourceDigest_(scan.getFormulas()),
-      valueDigest: sourceDigest_(scan.getValues())
+      periodDigest: sourceDigest_(values.slice(CENSUS.firstDataRow - 1).map(r=>r.slice(0,3))),
+      valueDigest: sourceDigest_(values)
     };
   }
   if (overview) {
@@ -63,6 +67,8 @@ function sourceSnapshot_() {
     snapshot.overview = {
       lastRow: overview.getLastRow(),
       lastColumn: overview.getLastColumn(),
+      maxRows: overview.getMaxRows(),
+      maxColumns: overview.getMaxColumns(),
       formulaDigest: sourceDigest_(scan.getFormulas()),
       valueDigest: sourceDigest_(scan.getValues())
     };
@@ -93,6 +99,13 @@ function compareSourceSnapshot_(current, baseline) {
     if (d.lastColumn !== SOURCE_MONITOR.expectedDataColumns) flag('critical','column_count',
       'Source has ' + d.lastColumn + ' populated columns; application expects ' +
       SOURCE_MONITOR.expectedDataColumns + '. Review added, removed or shifted columns.');
+    if (baseline && baseline.data && (d.maxRows !== baseline.data.maxRows ||
+        d.maxColumns !== baseline.data.maxColumns))
+      flag('review','grid_size',
+        'Source grid dimensions changed, including possible blank row/column insertions.');
+    if (baseline && baseline.data && d.periodDigest !== baseline.data.periodDigest)
+      flag('critical','reporting_dates',
+        'One or more reporting periods, start dates or end dates changed. The fixed-period UI needs review.');
     if (baseline && baseline.data && d.allFormulaDigest !== baseline.data.allFormulaDigest)
       flag('review','data_formulas',
         'One or more formulas in the census source worksheet changed since the monitoring baseline.');
@@ -101,7 +114,9 @@ function compareSourceSnapshot_(current, baseline) {
     if (baseline.overview.formulaDigest !== current.overview.formulaDigest)
       flag('review','summary_formulas','Overview worksheet formulas changed; verify dashboard totals.');
     if (baseline.overview.lastRow !== current.overview.lastRow ||
-        baseline.overview.lastColumn !== current.overview.lastColumn)
+        baseline.overview.lastColumn !== current.overview.lastColumn ||
+        baseline.overview.maxRows !== current.overview.maxRows ||
+        baseline.overview.maxColumns !== current.overview.maxColumns)
       flag('review','overview_layout','Overview worksheet used dimensions changed.');
   }
   if (baseline && baseline.data) {
