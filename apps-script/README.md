@@ -42,12 +42,23 @@ The backend pins the spreadsheet ID and exact named tabs, checks source row iden
 
 Saving confirms the write before refreshing the dashboard. Uncertain responses are resolved by rereading Sheets before another edit. The UI supports unsaved-change warnings, single-record Undo with stale-value protection, and quality checks of formulas, categories, duplicate keys, amounts, numeric inputs, reporting ranges and totals.
 
+## Primary editing interface and source-change alerts
+
+The **dashboard is the primary interface** for modifying supported census values. Google Sheets remains the backing database, not the normal data-entry screen. The current editor supports **existing row inputs D:I**. It does not yet add new examination rows, periods, columns, or formulas.
+
+To protect users from unexpected spreadsheet revisions, the new `SchemaMonitor.gs` watches for tab, column, row, reporting-date and formula changes. The **Data quality** screen shows source compatibility and a **Check source** action. Unreviewed changes pause edits rather than risking a write to the wrong column.
+
+To activate automatic email notifications, **copy `SchemaMonitor.gs` into the existing Apps Script project, update the OAuth manifest, then manually run `installSourceMonitor` once and approve the permissions**. This creates a spreadsheet change trigger plus an hourly backup scan. Ordinary count/rate changes do not send schema-alert emails; structural changes do. It does not automatically rewrite application code.
+
+See [Source monitor setup and change-handling guide](docs/SOURCE_MONITOR.md) for details, including how to approve a revised schema after code updates.
+
 ## Deployment
 
 1. Open the existing Pathology Census Explorer Apps Script project as its authorized owner.
-2. Paste the current `Code.gs` and `Index.html` from this branch. If changing manifest permissions, update `appsscript.json`.
+2. Paste the current `Code.gs`, `Index.html`, and `SchemaMonitor.gs` from this branch. Update `appsscript.json` to include trigger-management and email permissions.
 3. Save. To preserve the existing public-facing alias, choose **Deploy → Manage deployments → Edit → New version → Deploy**. Do not create a new deployment unless you want a new `/exec` URL.
 4. Keep **Execute as: Me** and **Who has access: Only myself** during this pilot. The server additionally verifies the active user's email.
+5. Run `installSourceMonitor` once in the editor and grant the requested permissions to activate change notifications.
 5. Confirm that the existing working Sheet is connected. Test a single edit, formula calculation, refresh, and Undo using a non-sensitive row.
 
 GitHub commits do **not** automatically update the live Apps Script deployment. The existing TinyURL forwards to the current `/exec` URL; updating that deployment keeps the alias.
@@ -57,6 +68,7 @@ GitHub commits do **not** automatically update the live Apps Script deployment. 
 ```sh
 node tests/backend.test.cjs
 node tests/frontend.test.cjs
+node tests/schema-monitor.test.cjs
 ```
 
 GitHub Actions runs these checks for changes to `apps-script`. Local browser tests exercise the asynchronous workflow with mocked `google.script.run`; they are not a substitute for verifying the published Google-hosted version.
