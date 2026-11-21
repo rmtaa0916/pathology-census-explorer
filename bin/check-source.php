@@ -44,7 +44,7 @@ try {
             'lastCheckedAt' => $state['lastCheckedAt'] ?? null,
             'lastResult' => $state['lastResult'] ?? null,
             'alertSentAt' => $state['lastAlertSentAt'] ?? null,
-            'automatedScheduleConfigured' => false // Cron is independent of this state file.
+            'schedule' => 'host-managed (not installed by this command)' // Cron is external.
         ], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR), "\n";
         exit(isset($state['baseline']) ? 0 : 3);
     }
@@ -113,10 +113,25 @@ try {
         'needsReview' => $result['needsReview'],
         'contentChanged' => $result['contentChanged'],
         'issues' => $result['issues'],
-        'emailConfigured' => $to ?? false
+        'emailConfigured' => filter_var((string)getenv('SOURCE_MONITOR_ALERT_EMAIL'), FILTER_VALIDATE_EMAIL) !== false && filter_var((string)getenv('SOURCE_MONITOR_MAIL_FROM'), FILTER_VALIDATE_EMAIL) !== false
     ], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR), "\n";
     exit($result['needsReview'] ? 2 : 0);
 } catch (Throwable $error) {
+    // Persist failure rather than leaving an old healthy state as the last scan.
+    if (isset($file, $state) && is_string($file) && is_array($state)) {
+        try {
+            $state['lastCheckedAt'] = gmdate('c');
+            $state['lastResult'] = [
+                'compatible' => false, 'needsReview' => true,
+                'severity' => 'critical', 'contentChanged' => false,
+                'issues' => [['severity' => 'critical', 'kind' => 'monitor_error',
+                    'message' => 'The source scan could not complete. Check host/API access.']]
+            ];
+            SourceMonitor::writeState($file, $state);
+        } catch (Throwable $ignored) {
+            // The command still exits nonzero if private state is unavailable.
+        }
+    }
     fwrite(STDERR, 'Monitor failed: ' . $error->getMessage() . "\n");
     exit(2);
 }
