@@ -25,6 +25,8 @@ jobs:
         run: php -d zend.assertions=1 -d assert.exception=1 tests/ReportBuilderTest.php
       - name: Test atomic PHP batch-edit planner and conflict checks
         run: php -d zend.assertions=1 -d assert.exception=1 tests/CensusBatchPlannerTest.php
+      - name: Validate PHP-rendered browser UI, batch staging and printable reports
+        run: node tests/FrontendReportTest.cjs
       - name: Reject accidental sensitive files
         run: |
           set -eu
