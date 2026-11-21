@@ -48,6 +48,7 @@ let S=DATA.summary_stats, EXAMS=DATA.exams, ENTRIES=DATA.entries, RECORDS=DATA.r
 const fmtInt=n=>Number(n).toLocaleString('en-PH'),fmtMoney=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:0,maximumFractionDigits:2});
 const escapeHtml=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let activePage='overview',chartMetric='volume',tableQuery='',tableSort='volume',tableSortDir='desc';
+let drawerEpoch=0, drawerSaving=false, drawerCommitted=false, drawerOriginal=null;
 function createBreakouts(){return [
  {label:'Inpatient · CHA',sec:'inpatient',prefix:'CHA',c:'#087f74'},
  {label:'Inpatient · PAY',sec:'inpatient',prefix:'PAY',c:'#49a89f'},
@@ -85,11 +86,52 @@ ${!report?'<div class="record-note">Validation is unavailable. No pass status ca
 ${checks.map(check=>`<section class="card quality-card"><div class="severity ${check.passed?'low':'med'}"></div><div><b>${escapeHtml(check.title)} — ${check.passed?'Pass':check.discrepancies+' issue(s)'}</b><p>${escapeHtml(check.explanation)}</p></div></section>`).join('')}
 <p class="fine">Most recent source verification: ${report?.checkedAt?escapeHtml(new Date(report.checkedAt).toLocaleString('en-PH')):'Not available'}. These checks do not replace laboratory data quality assurance.</p>
 <div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`}
-function showExam(name){const t=EXAMS.find(x=>x.test===name);if(!t)return;const es=ENTRIES.filter(e=>e.test===name);document.getElementById('drawer').innerHTML=`<button class="close" id="closeDrawer">Close ×</button><p class="eyebrow">Synthetic examination detail</p><h2 style="font-size:25px;letter-spacing:-.7px;margin:0 0 11px">${escapeHtml(name)}</h2><p class="fine">December 2023 demo · test counts, not unique patients</p><div class="mini-grid" style="margin:18px 0">${[['All activity',t.volume],['Patient-section',t.patient_volume],['STAT',t.stat_volume],['Illustrative amount',fmtMoney(t.reported_income)]].map(k=>`<div class="mini"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div><h3 style="font-size:13px;margin:21px 0 10px">Demo category detail</h3><div class="table-wrap"><table class="t"><thead><tr><th>Section · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead><tbody>${es.map(e=>`<tr><td>${e.section==='inpatient'?'IP':e.section==='outpatient'?'OP':'Other'} · ${escapeHtml(e.channel)}</td><td class="right">${e.volume}</td><td class="right">${fmtMoney(e.reported_income)}</td>${WRITES_ENABLED?`<td><button class="sourcebtn editdemo" data-edit-row="${e.source_rows[selectedInterval]||''}" data-period="${INTERVALS[selectedInterval].label}" data-test="${escapeHtml(e.test)}" data-old="${e.weeks[selectedInterval]}">Edit inputs</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4">No demo examinations</td></tr>'}</tbody></table></div><p class="fine" style="margin-top:18px">Synthetic demo data only. Edit counts, rates and category inputs for the selected interval; derived amounts update in Google Sheets.</p>`;
+function showExam(name){if(drawerSaving)return;drawerEpoch++;drawerOriginal=null;drawerCommitted=false;const t=EXAMS.find(x=>x.test===name);if(!t)return;const es=ENTRIES.filter(e=>e.test===name);document.getElementById('drawer').innerHTML=`<button class="close" id="closeDrawer">Close ×</button><p class="eyebrow">Synthetic examination detail</p><h2 style="font-size:25px;letter-spacing:-.7px;margin:0 0 11px">${escapeHtml(name)}</h2><p class="fine">December 2023 demo · test counts, not unique patients</p><div class="mini-grid" style="margin:18px 0">${[['All activity',t.volume],['Patient-section',t.patient_volume],['STAT',t.stat_volume],['Illustrative amount',fmtMoney(t.reported_income)]].map(k=>`<div class="mini"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div><h3 style="font-size:13px;margin:21px 0 10px">Demo category detail</h3><div class="table-wrap"><table class="t"><thead><tr><th>Section · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead><tbody>${es.map(e=>`<tr><td>${e.section==='inpatient'?'IP':e.section==='outpatient'?'OP':'Other'} · ${escapeHtml(e.channel)}</td><td class="right">${e.volume}</td><td class="right">${fmtMoney(e.reported_income)}</td>${WRITES_ENABLED?`<td><button class="sourcebtn editdemo" data-edit-row="${e.source_rows[selectedInterval]||''}" data-period="${INTERVALS[selectedInterval].label}" data-test="${escapeHtml(e.test)}" data-old="${e.weeks[selectedInterval]}">Edit inputs</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4">No demo examinations</td></tr>'}</tbody></table></div><p class="fine" style="margin-top:18px">Synthetic demo data only. Edit counts, rates and category inputs for the selected interval; derived amounts update in Google Sheets.</p>`;
 document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').classList.add('show');document.getElementById('closeDrawer').onclick=closeDrawer;
 if(WRITES_ENABLED)document.querySelectorAll('.editdemo').forEach(b=>b.onclick=()=>{if(b.dataset.editRow)openRecordEditor(Number(b.dataset.editRow));});
 }
-function closeDrawer(){document.getElementById('backdrop').classList.remove('show');document.getElementById('drawer').classList.remove('show')}
+function closeDrawer(force=false){
+  const drawer=document.getElementById('drawer');
+  if(force!==true){
+    if(drawerSaving){
+      const note=drawer.querySelector('#recordEditStatus');
+      if(note)note.textContent='The save request is processing. The editor will unlock when it finishes.';
+      return false;
+    }
+    const form=drawer.querySelector('#recordEditForm');
+    if(form && drawerOriginal && !drawerCommitted && formHasChanges(form,drawerOriginal) &&
+      !confirm('Discard your unsaved source-record changes?'))return false;
+  }
+  drawerEpoch++;drawerOriginal=null;drawerCommitted=false;
+  document.getElementById('backdrop').classList.remove('show');
+  drawer.classList.remove('show');
+  return true;
+}
+function recordFormValues(form){
+  const get=name=>form.elements.namedItem(name).value;
+  return {test:get('test').trim(),patientGroup:get('patientGroup'),billing:get('billing'),
+    priority:get('priority'),count:Number(get('count')),rate:Number(get('rate'))};
+}
+function formHasChanges(form,original){
+  const current=recordFormValues(form);
+  return Object.keys(original).some(k=>current[k]!==original[k]);
+}
+function applyFreshDataset(refreshed){
+  if(!refreshed||!refreshed.summary_stats||!Array.isArray(refreshed.records)||
+     !Array.isArray(refreshed.entries)||!Array.isArray(refreshed.exams))
+    throw new Error('Unexpected data returned by Google Sheets.');
+  DATA=refreshed;S=refreshed.summary_stats;EXAMS=refreshed.exams;
+  ENTRIES=refreshed.entries;RECORDS=refreshed.records;QUALITY=refreshed.quality||null;
+  breakouts=createBreakouts();
+}
+function requestFreshDataset(){
+  return new Promise((resolve,reject)=>google.script.run
+    .withSuccessHandler(resolve).withFailureHandler(reject).getDataset());
+}
+function displaySyncNotice(message){
+  document.getElementById('content').insertAdjacentHTML('afterbegin',
+    '<div class="record-note" role="status">'+escapeHtml(message)+'</div>');
+}
 document.getElementById('backdrop').addEventListener('click',closeDrawer);document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 
 const INTERVALS=[{label:'Dec 1–7',date:'2023-12-01',n:0},{label:'Dec 8–14',date:'2023-12-08',n:1},{label:'Dec 15–21',date:'2023-12-15',n:2},{label:'Dec 22–31',date:'2023-12-22',n:3}];
@@ -172,9 +214,13 @@ function records(){
     </div>`;
 }
 function openRecordEditor(sheetRow){
+  if(drawerSaving)return;
   const record=RECORDS.find(r=>r.sheetRow===sheetRow);
   if(!record){alert('Source record is unavailable; refresh the dashboard.');return;}
   const drawer=document.getElementById('drawer');
+  const thisEditor=++drawerEpoch;drawerCommitted=false;
+  drawerOriginal={test:record.test,patientGroup:record.patientGroup,
+    billing:record.billing,priority:record.priority,count:record.count,rate:record.rate};
   const exams=[...new Set(RECORDS.map(r=>r.test))].sort();
   const combos={Inpatient:['CHA','PAY'],Outpatient:['CHA','PAY'],Employee:['QFS']};
   drawer.innerHTML=`<button type="button" class="close" id="closeDrawer">Close ×</button>
@@ -211,6 +257,9 @@ function openRecordEditor(sheetRow){
         <button type="submit" class="save" id="saveRecordButton">Save changes</button>
       </div>
       <div class="record-status full" id="recordEditStatus" role="status"></div>
+    <div class="record-actions" id="recordRefreshActions" hidden>
+      <button type="button" class="sourcebtn" id="retryRecordRefresh">Reload latest Sheet values</button>
+    </div>
     </form>
     <p class="fine">Reporting period, date range, formula and demo-only status cannot be edited here.</p>`;
   drawer.classList.add('show');
@@ -232,45 +281,58 @@ function openRecordEditor(sheetRow){
     const rate=Number(field('rate').value);
     drawer.querySelector('#recordComputedAmount').textContent=Number.isFinite(n*rate)?fmtMoney(n*rate):'—';
   });
+  const note=drawer.querySelector('#recordEditStatus');
+  const saveButton=drawer.querySelector('#saveRecordButton');
+  const retryActions=drawer.querySelector('#recordRefreshActions');
+  const lockInputs=()=>form.querySelectorAll('input,select').forEach(el=>el.disabled=true);
+  const refreshAfterCommit=async()=>{
+    if(thisEditor!==drawerEpoch)return;
+    drawerSaving=true;note.textContent='Changes saved to Google Sheets. Refreshing calculations…';
+    try {
+      const fresh=await requestFreshDataset();
+      if(thisEditor!==drawerEpoch)return;
+      applyFreshDataset(fresh);
+      drawerSaving=false;
+      closeDrawer(true);
+      render();
+      displaySyncNotice('Saved to Google Sheets. Dashboard calculations are up to date.');
+    }catch(error){
+      if(thisEditor!==drawerEpoch)return;
+      drawerSaving=false;
+      retryActions.hidden=false;
+      note.textContent='Saved to Google Sheets, but the dashboard did not refresh. Displayed totals may be stale. Reload the latest values; do not save this record again.';
+    }
+  };
+  drawer.querySelector('#retryRecordRefresh').addEventListener('click',refreshAfterCommit);
   form.addEventListener('submit',async event=>{
     event.preventDefault();
-    if(!form.reportValidity())return;
-    const values={
-      test:field('test').value.trim(),patientGroup:field('patientGroup').value,
-      billing:field('billing').value,priority:field('priority').value,
-      count:Number(field('count').value),rate:Number(field('rate').value)
-    };
+    if(drawerSaving||drawerCommitted||!form.reportValidity())return;
+    const values=recordFormValues(form);
     if(!/^[A-Za-z0-9][A-Za-z0-9 .()+/_-]{0,79}$/.test(values.test) ||
        !Number.isInteger(values.count) || values.count<0 || values.count>100000 ||
        !Number.isFinite(values.rate) || values.rate<0 || values.rate>1000000 ||
        Math.abs(values.rate*100-Math.round(values.rate*100))>.000001){
-      drawer.querySelector('#recordEditStatus').textContent='Please enter a valid examination name, nonnegative whole count and rate of up to two decimal places.';
+      note.textContent='Enter a valid examination name, whole-number count, and rate with up to two decimals.';
       return;
     }
-    const btn=drawer.querySelector('#saveRecordButton');
-    const note=drawer.querySelector('#recordEditStatus');
-    btn.disabled=true;note.textContent='Saving to Google Sheets…';
+    drawerSaving=true;saveButton.disabled=true;
+    lockInputs();note.textContent='Saving to Google Sheets…';
     try{
-      const expected={
-        test:record.test,patientGroup:record.patientGroup,billing:record.billing,
-        priority:record.priority,count:record.count,rate:record.rate
-      };
       await new Promise((resolve,reject)=>google.script.run
         .withSuccessHandler(resolve).withFailureHandler(reject)
-        .updateDemoRecord({sheetRow:record.sheetRow,period:record.period,expected,values}));
-      note.textContent='Saved. Updating the dashboard…';
-      const refreshed=await new Promise((resolve,reject)=>google.script.run
-        .withSuccessHandler(resolve).withFailureHandler(reject).getDataset());
-      DATA=refreshed;S=refreshed.summary_stats;EXAMS=refreshed.exams;
-      ENTRIES=refreshed.entries;RECORDS=refreshed.records||[];
-      breakouts=createBreakouts();
-      closeDrawer();render();
-      document.getElementById('content').insertAdjacentHTML('afterbegin',
-        '<div class="record-note" role="status">Changes saved to the synthetic Google Sheet. Calculated views are refreshed.</div>');
+        .updateDemoRecord({sheetRow:record.sheetRow,period:record.period,
+          expected:drawerOriginal,values}));
     }catch(error){
-      note.textContent='Save failed: '+((error&&error.message)||String(error));
-      btn.disabled=false;
+      if(thisEditor!==drawerEpoch)return;
+      drawerSaving=false;drawerCommitted=false;
+      note.textContent='Save could not be confirmed: '+((error&&error.message)||String(error))+
+        '. Reload current Sheet values before attempting another edit.';
+      retryActions.hidden=false;
+      return;
     }
+    if(thisEditor!==drawerEpoch)return;
+    drawerCommitted=true;
+    await refreshAfterCommit();
   });
 }
 
