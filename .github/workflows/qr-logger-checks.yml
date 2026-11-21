@@ -1,0 +1,21 @@
+name: QR Logger Pilot Checks
+on:
+  push:
+    branches: [feature/qr-logger-pilot]
+    paths:
+      - 'qr-logger/**'
+      - '.github/workflows/qr-logger-checks.yml'
+  pull_request:
+    paths:
+      - 'qr-logger/**'
+      - '.github/workflows/qr-logger-checks.yml'
+jobs:
+  synthetic-ledger-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate Apps Script transaction logic
+        run: node qr-logger/tests/backend.test.cjs
