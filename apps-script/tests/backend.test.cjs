@@ -281,7 +281,7 @@ test('nonadjacent edits save through one endpoint with separate range writes',()
 test('stale data in one row rejects the entire batch before any write',()=>{
  const before7=rows[3].slice(),before8=rows[4].slice();
  const first=makeEdit(7,{count:before7[7]+8}),second=makeEdit(8,{count:before8[7]+9});
- second.expected.count=-1;
+ second.expected.count=999;
  const oldFlush=flushCount;
  assert.throws(()=>context.updateRecordsBatch({changes:[first,second]}),/changed/);
  assert.deepEqual(rows[3],before7);assert.deepEqual(rows[4],before8);
