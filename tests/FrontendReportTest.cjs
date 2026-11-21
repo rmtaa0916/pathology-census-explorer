@@ -132,7 +132,7 @@ const detail=vm.runInContext("examDetailMarkup('CRP',0)",sandbox);
 assert.ok(detail.includes('Source records · Dec 1–7'));
 assert.ok(detail.includes('id="drawerExamPeriod"'));
 assert.ok(!detail.includes('data-drawer-edit-row=""'),'No useless blank edit controls');
-const noRows=vm.runInContext("examDetailMarkup('CRP',1)",sandbox);
+const noRows=vm.runInContext("(()=>{const saved=RECORDS.splice(0);try{return examDetailMarkup('CRP',1);}finally{RECORDS.push(...saved);}})()",sandbox);
 assert.ok(!noRows.includes('data-drawer-edit-row'),'No edit controls for absent interval rows');
 assert.ok(noRows.includes('No source rows in this interval.'));
 const gone=vm.runInContext("examDetailMarkup('DOES NOT EXIST',0)",sandbox);
