@@ -26,7 +26,8 @@ function requireOwner_() {
 function getDemoSheet_() {
   const book = SpreadsheetApp.openById(CENSUS.spreadsheetId);
   const allTabs = book.getSheets().map(s => s.getName());
-  if (allTabs.some(t => !CENSUS.expectedTabs.includes(t))) {
+  if (allTabs.length !== CENSUS.expectedTabs.length ||
+      allTabs.some(t => !CENSUS.expectedTabs.includes(t))) {
     throw new Error('Unexpected spreadsheet tabs; synthetic-only access required.');
   }
   const sheet = book.getSheetByName(CENSUS.sheetName);
@@ -36,8 +37,8 @@ function getDemoSheet_() {
   return sheet;
 }
 
-function readDemoRows_() {
-  const sheet = getDemoSheet_();
+function readDemoRows_(sourceSheet) {
+  const sheet = sourceSheet || getDemoSheet_();
   const rows = sheet.getRange(CENSUS.headerRow, 1, CENSUS.lastDataRow - CENSUS.headerRow + 1, 11).getValues();
   if (rows[0][0] !== 'Period' || rows[0][7] !== 'Test count') {
     throw new Error('Unrecognized demo census schema.');
@@ -124,9 +125,78 @@ function censusFromRows_(rows) {
   };
 }
 
+
+/**
+ * Independent, live reconciliation from the read-only synthetic source.
+ * Formula checks are batched, not fetched one cell at a time.
+ */
+function auditDemoRows_(rows, formulas, data) {
+  const checks = [];
+  const addCheck = (id, title, discrepancies, explanation) => checks.push({
+    id, title, passed: discrepancies === 0, discrepancies, explanation
+  });
+  let badCategories = 0, duplicates = 0, badFormulas = 0, badAmounts = 0;
+  let invalidCounts = 0, badMarkers = 0;
+  const categories = new Set();
+  const counts = new Array(CENSUS.periods.length).fill(0);
+  const countSum = rows.slice(1).reduce((s, row) => s + (Number(row[7]) || 0), 0);
+  const amountSum = rows.slice(1).reduce((s, row) => s + (Number(row[9]) || 0), 0);
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i], sheetRow = CENSUS.headerRow + i;
+    const [period,,,test,group,billing,priority,count,rate,amount,marker] = row;
+    const patient = ['Inpatient','Outpatient'].includes(group) &&
+      ['CHA','PAY'].includes(billing) && ['STAT','ROUTINE'].includes(priority);
+    const operational = group === 'Employee' && billing === 'QFS' && priority === 'QFS';
+    if (!patient && !operational) badCategories++;
+    if (marker !== CENSUS.demoMarker) badMarkers++;
+    if (!Number.isInteger(count) || count < 0 || typeof rate !== 'number' ||
+        !Number.isFinite(rate) || rate < 0) invalidCounts++;
+    const key = JSON.stringify([period,test,group,billing,priority]);
+    if (categories.has(key)) duplicates++;
+    categories.add(key);
+    const index = CENSUS.periods.indexOf(period);
+    if (index >= 0) counts[index]++;
+    const formula = formulas[i - 1] && formulas[i - 1][0];
+    if (formula !== '=H' + sheetRow + '*I' + sheetRow) badFormulas++;
+    if (!Number.isFinite(amount) || Math.abs(amount - count * rate) > 0.011) badAmounts++;
+  }
+  addCheck('isolation','Synthetic-only source markers',badMarkers,
+    'Every input row must retain its synthetic/demo marker.');
+  addCheck('categories','Valid category combinations',badCategories,
+    'Inpatient and outpatient use CHA/PAY with STAT/ROUTINE; employee uses QFS.');
+  addCheck('uniqueness','Unique examination/category/period keys',duplicates,
+    'Every examination, period, patient group, billing and priority combination must be unique.');
+  addCheck('formulas','Source amount formulas',badFormulas,
+    'All amount cells must retain the formula =H(row)*I(row).');
+  addCheck('amounts','Computed amount reconciliation',badAmounts,
+    'Each amount must equal count multiplied by illustrative rate.');
+  addCheck('numbers','Nonnegative numeric inputs',invalidCounts,
+    'Counts are whole nonnegative numbers and rates are nonnegative numeric values.');
+  const unexpectedRanges = counts.filter(n => n !== 198).length +
+    (rows.length - 1 !== 792 ? 1 : 0);
+  addCheck('ranges','Four 198-record reporting intervals',unexpectedRanges,
+    'The synthetic 2023 fixture has exactly 198 records per December interval.');
+  const totalMismatch = countSum !== data.summary_stats.total_volume ||
+    Math.abs(amountSum - data.summary_stats.reported_income) > 0.011 ? 1 : 0;
+  addCheck('totals','Dashboard-to-source reconciliation',totalMismatch,
+    'Dashboard counts and illustrative amounts match all source rows.');
+  return {
+    checkedAt: new Date().toISOString(), totalRecords: rows.length - 1,
+    passed: checks.every(c => c.passed), checks,
+    findings: checks.reduce((sum,c) => sum + c.discrepancies, 0),
+    zeroCountRecords: rows.slice(1).filter(row => row[7] === 0).length
+  };
+}
+
 function getDataset() {
   requireOwner_();
-  return censusFromRows_(readDemoRows_());
+  const sheet = getDemoSheet_();
+  const rows = readDemoRows_(sheet);
+  const data = censusFromRows_(rows);
+  const formulas = sheet.getRange(CENSUS.firstDataRow, 10,
+    CENSUS.lastDataRow - CENSUS.firstDataRow + 1, 1).getFormulas();
+  data.quality = auditDemoRows_(rows, formulas, data);
+  return data;
 }
 
 function doGet() {
