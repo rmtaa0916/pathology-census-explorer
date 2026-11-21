@@ -170,7 +170,48 @@ assert.ok(!printed.includes('Generated from the connected working-copy spreadshe
 assert.ok(printed.includes('Report date:'));
 assert.ok(printed.includes('not distinct patients'));
 assert.ok(html.includes('@page{size:A4 portrait'));
-assert.ok(html.includes('filter:grayscale(100%)'),'LCP letterhead is grayscale in formal reports');
+assert.ok(html.includes('.report-stationery{filter:none!important}'),'Full-color LCP stationery is preserved');
+assert.ok(!html.includes('filter:grayscale('),'No grayscale conversion of institutional stationery');
+assert.ok(!html.includes('position:fixed;top:-40mm'),'Old overlapping fixed-page artwork is removed');
+assert.ok(html.includes('@page{size:A4 portrait;margin:47mm 16mm 46mm}'),'Safe printable area on every A4 page');
+assert.ok(html.includes('content:url("${top}")'),'Head artwork repeats in top page margin');
+assert.ok(html.includes('content:url("${bottom}")'),'Footer artwork repeats in bottom page margin');
+assert.ok(html.includes('margin-left:-16mm')&&html.includes('margin-right:-16mm'),'Full page width of original stationery');
+assert.ok(html.includes('report-appendix-table'),'Appendix has a dedicated six-column table layout');
+assert.ok(printed.includes('<colgroup>'),'Appendix sets explicit column widths');
+const noAppendix=vm.runInContext("reportDocument(reportAggregate(RECORDS,'all'),false)",sandbox);
+assert.ok(!noAppendix.includes('Appendix A.'),'Unchecked checkbox excludes appendix');
+assert.equal((printed.match(/<section class="report-appendix">/g)||[]).length,1,'Checked checkbox includes one appendix');
+const screenSetup=get('content').innerHTML;
+assert.ok(screenSetup.includes('type="checkbox" id="reportDetail"'),'Appendix checkbox present');
 assert.ok(html.includes('.report-paper *:not(img){color:#000!important'),'Formal report text is black');
 assert.ok(html.includes('reportSecondRoleOptions'),'Second approval label is selectable');
-console.log('Monochrome A4 reports, editable validated signatories, XSS escaping and print styles passed');
+console.log('Black report fonts, original-color repeated letterhead, optional appendix and signatories passed');
+(async()=>{
+  const originalGet=sandbox.document.getElementById;
+  sandbox.document.getElementById=id=>id==='reportPageStationeryStyle'?null:originalGet(id);
+  const appended=[];
+  sandbox.document.head={appendChild(node){appended.push(node)}};
+  const crops=[];
+  sandbox.document.createElement=tag=>{
+    if(tag==='style')return {id:'',textContent:''};
+    if(tag!=='canvas')throw Error('Unexpected DOM tag '+tag);
+    const canvas={
+      width:0,height:0,
+      getContext(){return {drawImage(...args){crops.push(args)}}},
+      toDataURL(){return 'data:image/png;base64,'+(this.height===174?'HEAD':'FOOT')}
+    };
+    return canvas;
+  };
+  sandbox.Image=class{set src(value){assert.ok(value.startsWith('data:image/png;base64,'));this.onload()}};
+  await vm.runInContext('prepareReportLetterheadPrint()',sandbox);
+  assert.equal(appended.length,1,'Print margin sheet is installed in document head');
+  const css=appended[0].textContent;
+  assert.ok(css.includes('margin:47mm 16mm 46mm'));
+  assert.ok(css.includes('@top-center')&&css.includes('@bottom-center'));
+  assert.ok(css.includes('data:image/png;base64,HEAD')&&css.includes('data:image/png;base64,FOOT'));
+  assert.equal(crops.length,3,'Prepare full A4, header and footer crops');
+  assert.equal(crops[1][2],794);
+  assert.equal(crops[2][1],952);
+  console.log('Printed full-color margin-box artwork prepared on every page, without background graphics');
+})().catch(error=>{console.error(error);process.exitCode=1});
