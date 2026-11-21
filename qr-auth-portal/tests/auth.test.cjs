@@ -39,9 +39,11 @@ assert.match(html,/id="start-qr-scan"/);
 assert.match(html,/getUserMedia/);
 assert.match(html,/new BarcodeDetector[(]/);
 assert.match(html,/stopQrScan[(][)]/);
-const refFunction=html.match(/function qrRefFromLink[(]raw[)][{]([\\s\\S]*?)\\n[}]/);
-assert.ok(refFunction,"QR reference decoder present");
-const checkRef=vm.runInNewContext(refFunction[0]+"; qrRefFromLink",{
+const refStart=html.indexOf('function qrRefFromLink(raw){');
+const refEnd=html.indexOf('\nasync function readQrFrame',refStart);
+assert.ok(refStart>=0&&refEnd>refStart,'QR reference decoder present');
+const refFunction=html.slice(refStart,refEnd);
+const checkRef=vm.runInNewContext(refFunction+"; qrRefFromLink",{
   URL,window:{location:{origin:"https://rmtaa0916.github.io",pathname:"/pathology-census-explorer/qr-auth-portal/"}},
   refs:()=>[{id:"TEST-CRP"},{id:"KIT-CRP-001"}]
 });
