@@ -120,7 +120,7 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
 .report-signatures{break-inside:avoid}.report-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin:28px 0 4px}
 .report-sign-grid>div{font-size:10px;color:#314e62}.report-sign-grid strong{display:block;margin-bottom:22px;font-size:11px}.report-sign-line{border-bottom:1px solid #73818a;height:1px}.report-sign-grid small{display:block;font-size:9px;color:#647886;margin-top:7px}
 .report-appendix{break-before:page;page-break-before:always}
-@media(max-width:600px){.report-preview{padding:0}.report-paper{width:100%;min-height:0;padding:22% 7% 16%}.report-letterhead img{width:55px}.report-institution{font-size:11px}.report-department{font-size:10px}.report-metrics,.report-counts{grid-template-columns:repeat(2,1fr)}.report-toolbar{border-radius:0}}
+@media(max-width:600px){.report-preview{padding:0}.report-paper{width:100%;min-height:0;padding:22% 7% 16%}.report-stationery{height:auto;aspect-ratio:210 / 297}.report-letterhead img{width:55px}.report-institution{font-size:11px}.report-department{font-size:10px}.report-metrics,.report-counts{grid-template-columns:repeat(2,1fr)}.report-toolbar{border-radius:0}}
 @page{size:A4 portrait;margin:40mm 15mm 28mm}
 @media print{
  html,body{background:white!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
@@ -772,7 +772,7 @@ function reportDocument(model,withAppendix=false){
      <div class="report-meta"><span><b>Reporting coverage:</b> ${escapeHtml(model.start)} to ${escapeHtml(model.end)}</span>
        <span><b>Report date:</b> ${escapeHtml(reportDate)}</span>
        <span><b>Source:</b> Connected Google Sheets working copy</span></div>
-     <div class="report-notice"><b>For internal verification.</b> Figures reflect the working-copy snapshot at generation.
+     <div class="report-notice"><b>For internal verification.</b> Figures reflect the working-copy records as of the report date.
        This document is not an institutional approval or certification. Confirm totals and obtain appropriate signatories before circulation.</div>
      <section><h2>1. Executive summary</h2><div class="report-metrics">
        ${metric('Total examinations',fmtInt(model.total.count))}
