@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LCP Pathology | QR Logger</title>
+<style>
+:root{--ink:#1b3340;--muted:#607584;--teal:#08756b;--line:#dce6e9;--bg:#f3f7f7;--white:#fff;--amber:#a96d11}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line)}header .inner{max-width:1080px;margin:auto;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:15px 19px}
+h1{font-size:21px;margin:0;letter-spacing:-.5px}h2{font-size:18px;margin:0 0 14px}small,.muted{color:var(--muted)}.eyebrow{font-size:11px;text-transform:uppercase;font-weight:800;letter-spacing:.12em;color:var(--teal)}
+main{max-width:1080px;margin:22px auto;padding:0 16px 42px}.hero{padding:17px 19px;border:1px solid #b7d8ce;border-radius:12px;background:#ecf8f3;margin-bottom:18px}
+.hero strong{color:#075c51}.hero p{margin:5px 0 0;font-size:12px}.tabs{display:flex;gap:8px;overflow-x:auto;margin-bottom:17px}
+.tabs button{white-space:nowrap;border:1px solid var(--line);border-radius:9px;background:#fff;padding:10px 14px;color:var(--muted);font-weight:700}
+.tabs button.active{background:var(--teal);color:white;border-color:var(--teal)}
+.card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:19px;box-shadow:0 2px 9px #173a3a09}
+.panel{display:grid;grid-template-columns:minmax(300px,1.1fr) minmax(240px,.9fr);gap:15px}
+label{display:block;font-size:12px;font-weight:750;margin:13px 0 6px}input,select,textarea{display:block;border:1px solid #cfdde0;border-radius:9px;padding:12px;width:100%;background:white;color:var(--ink);font:inherit;min-height:44px}
+input:focus,select:focus,textarea:focus{outline:2px solid #7bb4a9}textarea{resize:vertical;min-height:67px}
+button{cursor:pointer;font:inherit}button.primary{background:var(--teal);border:0;color:white;font-weight:750;border-radius:9px;padding:13px 17px;min-height:45px}
+button.secondary{border:1px solid var(--line);border-radius:9px;background:#fff;padding:11px 14px;color:var(--ink);font-weight:680}
+button:disabled{opacity:.5;cursor:not-allowed}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.row.space{justify-content:space-between}.card p{font-size:13px}
+.token{font:600 12px ui-monospace,Consolas,monospace;background:#ecf2f3;padding:6px 9px;border-radius:6px;overflow-wrap:anywhere}
+.status{padding:13px;margin-top:15px;border-radius:9px;background:#edf5ff;border:1px solid #b8d2f4;font-size:13px}
+.status.error{background:#fff2ed;border-color:#f0c4b6;color:#87381c}.status.good{background:#eaf8ef;border-color:#bee2c7;color:#215a34}
+.stock{border-radius:11px;background:#f2f7f7;padding:14px;margin-top:11px}
+.stock b{font-size:25px;display:block}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:9px 7px;border-bottom:1px solid #e6eded;font-size:12px}th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+#page-labels,#page-kits,#page-recent{display:none}.sheet-top{margin-bottom:16px}.print-page{background:white;border:1px solid var(--line);margin:auto;width:min(100%,210mm);padding:12mm;min-height:260mm}
+.sheet-head{margin-bottom:8mm;border-bottom:2px solid var(--teal);padding-bottom:4mm}.sheet-head h2{margin:0 0 3mm;font-size:18px}
+.print-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5mm}
+.print-grid.kits{grid-template-columns:repeat(2,minmax(0,1fr));gap:6mm}
+.qr-label{border:1px solid #9baab1;border-radius:3mm;padding:4mm;min-height:67mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;break-inside:avoid;page-break-inside:avoid}
+.qr-label.kit{min-height:75mm}
+.qr-label .title{font-weight:800;font-size:13px;margin:6px 0 2px;line-height:1.18}.qr-label .code{font:10px ui-monospace,monospace;color:#3f5564;overflow-wrap:anywhere}
+.qr-label .sub{font-size:10px;color:#61727d;margin-top:2px}.qr-img{min-width:100px;min-height:100px;display:grid;place-items:center}
+.qr-img img{width:112px!important;height:112px!important;max-width:100%}.empty{padding:22px;color:var(--muted);text-align:center}
+footer{padding:14px 0;color:var(--muted);font-size:11px}
+@media(max-width:680px){.panel{grid-template-columns:1fr}.print-grid,.print-grid.kits{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.print-page{padding:12px;min-height:0}.qr-label{padding:6px;min-height:160px}.qr-label.kit{min-height:175px}.qr-img img{width:92px!important;height:92px!important}h1{font-size:17px}main{margin-top:15px}.card{padding:15px}}
+@page{size:A4 portrait;margin:7mm}
+@media print{
+ body{background:#fff}header,.tabs,.hero,.sheet-top,.hide-print,footer{display:none!important}
+ main{padding:0;margin:0;max-width:none}#page-log,#page-recent{display:none!important}
+ #page-labels,#page-kits{display:none!important}
+ body.print-labels #page-labels,body.print-kits #page-kits{display:block!important}
+ .print-page{border:0;margin:0;padding:0;min-height:0;width:100%}
+ .print-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5mm}
+ .print-grid.kits{grid-template-columns:repeat(2,minmax(0,1fr));gap:6mm}
+ .qr-label{padding:3mm;min-height:68mm}
+ .qr-label.kit{min-height:77mm}
+ .qr-img img{width:31mm!important;height:31mm!important}
+ .qr-label .title{font-size:11pt}
+}
+[hidden]{display:none!important}
+#login-panel{max-width:470px;margin:9vh auto 0;padding:25px}
+#login-panel h2{margin:0 0 6px}
+#google-login{min-height:44px;margin:18px 0 12px}
+#signout{border:0;padding:6px;background:transparent;color:var(--teal);font-size:12px;text-decoration:underline}
+@media print{#login-panel,#signout{display:none!important}}
+</style>
+<script src="config.js"></script>
+<script src="qrcode.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<iframe name="qr-transport" title="Secure connection to QR Logger" hidden></iframe>
+<header><div class="inner"><div><div class="eyebrow">Lung Center of the Philippines · Pathology</div><h1>Laboratory QR Logger</h1><small>Synthetic pilot · Separate from official census</small></div><div style="text-align:right"><div id="who" class="muted" style="font-size:12px">Sign-in required</div><button id="signout" type="button" hidden>Switch account</button></div></div></header>
+<main>
+<section id="login-panel" class="card">
+ <div class="eyebrow">Laboratory QR Logger</div>
+ <h2>Sign in to record activities</h2>
+ <p class="muted">Use your authorized Google account. The logger will verify your identity without asking for access to your Google Sheets or Gmail.</p>
+ <div id="google-login"></div>
+ <div id="login-status" class="status">Preparing Google sign-in…</div>
+ <p class="muted">This is a separate verification prototype using demonstration inventory records.</p>
+</section>
+<div id="app-shell" hidden>
+<div class="hero"><strong>Verified sign-in prototype — do not enter patient identifiers or real laboratory consumption.</strong><p>Phone camera opens printed QR link. Repeated scans only identify an item; no stock is deducted until a new transaction is confirmed.</p></div>
+<nav class="tabs hide-print" aria-label="QR Logger navigation">
+ <button data-tab="log" class="active">Record activity</button>
+ <button data-tab="labels">A4 reference sheet</button>
+ <button data-tab="kits">Kit labels</button>
+ <button data-tab="recent">Recent entries</button>
+</nav>
+<section id="page-log">
+ <div class="panel">
+  <div class="card">
+   <h2>Record laboratory activity</h2>
+   <p class="muted">Select a QR-coded activity, or open this page directly by scanning a printed QR using the phone's normal camera.</p>
+   <form id="form" autocomplete="off">
+    <label for="ref">Scanned QR / item</label><select id="ref" required><option value="">Loading sample items…</option></select>
+    <div id="lot-wrap" style="display:none"><label for="kit">Physical kit / package</label><select id="kit"></select></div>
+    <label for="action">What happened?</label><select id="action"></select>
+    <label for="qty">Quantity</label><input id="qty" type="number" min="0" max="100000" step="1" value="1" required>
+    <label for="notes">Optional note (no patient information)</label><textarea id="notes" maxlength="140" placeholder="Example: QC run, box replenished"></textarea>
+    <div class="row" style="margin-top:16px">
+      <button class="primary" id="save" type="submit">Confirm transaction</button>
+      <button class="secondary" id="new" type="button" style="display:none">Use again / new event</button>
+    </div>
+   </form>
+   <div id="status" class="status" role="status" aria-live="polite">Loading pilot data…</div>
+  </div>
+  <aside class="card">
+    <div class="eyebrow">Identified reference</div><h2 id="current-title">Select a QR code</h2>
+    <span class="token" id="current-code">—</span>
+    <div id="stock-info" class="stock">Inventory not selected</div>
+    <p class="muted">A test entry records test workload only. A stock entry changes inventory only for <strong>Consume</strong>, <strong>Waste</strong>, or <strong>Receive</strong>. Opening a kit leaves quantity unchanged.</p>
+    <p class="muted">A duplicate request ID returns its earlier result. A deliberate additional use requires a new transaction.</p>
+  </aside>
+ </div>
+</section>
+<section id="page-labels">
+ <div class="sheet-top row space"><div><h2>Printed QR reference sheet</h2><p class="muted">Print A4, laminate and place at the Immunology workstation.</p></div><button type="button" class="primary" id="print-labels">Print A4 sheet</button></div>
+ <div class="print-page"><div class="sheet-head"><div class="eyebrow">LCP • Pathology & Laboratory Medicine</div><h2>Immunology • Activity QR Reference</h2><small>Scan with phone camera → confirm test activity. Not a clinical result form.</small></div><div class="print-grid" id="test-label-grid"></div></div>
+</section>
+<section id="page-kits">
+ <div class="sheet-top row space"><div><h2>Physical kit labels</h2><p class="muted">Print and attach the matching label to each demo kit or package.</p></div><button type="button" class="primary" id="print-kits">Print kit labels</button></div>
+ <div class="print-page"><div class="sheet-head"><div class="eyebrow">LCP • Pathology & Laboratory Medicine</div><h2>Reagent and Supply Kit QR Labels</h2><small>Scan exact kit to log opening, consumption, waste or receipt. DEMONSTRATION ONLY.</small></div><div class="print-grid kits" id="kit-label-grid"></div></div>
+</section>
+<section id="page-recent"><div class="card"><h2>Recent transaction ledger</h2><p class="muted">Shows the last 15 accepted entries in the synthetic pilot workbook. There are no automatic census updates.</p><div style="overflow-x:auto"><table><thead><tr><th>Time (UTC)</th><th>Reference</th><th>Action</th><th>Quantity</th><th>Transaction</th></tr></thead><tbody id="recent"><tr><td colspan="5">Loading…</td></tr></tbody></table></div></div></section>
+<footer class="hide-print">QR labels link to this portal; no patient details are encoded. Google Identity Services verifies each signed-in person; stock is controlled by the owner backend.</footer>
+</div>
+</main>
+<script>
+'use strict';
+const INITIAL_REF=new URLSearchParams(window.location.search).get('ref')||'';
+const CFG=window.QR_PORTAL_CONFIG||{};
+let LOGIN_TOKEN='',LOGIN_NONCE='',SIGNIN_BUSY=false;
+const WAITING=new Map();
+const newNonce=()=>{const arr=new Uint8Array(20);crypto.getRandomValues(arr);return Array.from(arr,b=>b.toString(16).padStart(2,'0')).join('')};
+function loginMessage(msg,error=false){el('login-status').textContent=msg;el('login-status').className='status '+(error?'error':'')}
+function safeEndpoint(url){try{const u=new URL(url);return u.protocol==='https:'&&u.hostname==='script.google.com'&&
+  /^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(u.pathname)}catch(_){return false}}
+function launchGoogle(){
+ if(!CFG.clientId||!/^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(CFG.clientId)||!safeEndpoint(CFG.endpoint)){
+  loginMessage('Administrator setup needed: set the Google OAuth Client ID and Apps Script endpoint in config.js.',true);return;
+ }
+ if(!window.google?.accounts?.id){loginMessage('Google Sign-In could not load. Check your connection and refresh.',true);return}
+ LOGIN_NONCE=newNonce();
+ google.accounts.id.initialize({client_id:CFG.clientId,nonce:LOGIN_NONCE,callback:onGoogleCredential,auto_select:false});
+ google.accounts.id.renderButton(el('google-login'),{type:'standard',size:'large',theme:'outline',text:'signin_with',width:275});
+ loginMessage('Choose an approved laboratory Google account.');
+}
+function onGoogleCredential(result){
+ if(!result?.credential)return loginMessage('Google sign-in did not return an identity token.',true);
+ LOGIN_TOKEN=result.credential;SIGNIN_BUSY=true;
+ loginMessage('Verifying your Google account…');
+ rpc('bootstrap',{}).then(data=>{
+   el('login-panel').hidden=true;el('app-shell').hidden=false;el('signout').hidden=false;
+   document.querySelectorAll('[data-tab]').forEach(b=>b.disabled=false);
+   adoptData(data,true);
+ }).catch(err=>{
+   LOGIN_TOKEN='';
+   loginMessage('Access denied: '+err.message,true);
+ }).finally(()=>SIGNIN_BUSY=false);
+}
+function signOut(){
+ LOGIN_TOKEN='';LOGIN_NONCE='';DATA=null;PENDING=null;LAST_SUCCESS=false;
+ el('app-shell').hidden=true;el('login-panel').hidden=false;el('signout').hidden=true;
+ el('who').textContent='Sign-in required';el('google-login').innerHTML='';
+ if(window.google?.accounts?.id)google.accounts.id.disableAutoSelect();
+ launchGoogle();
+}
+function rpc(op,payload){
+ if(!LOGIN_TOKEN)return Promise.reject(Error('Sign in first.'));
+ if(!safeEndpoint(CFG.endpoint))return Promise.reject(Error('Invalid Apps Script endpoint configuration.'));
+ const requestId=newNonce();
+ return new Promise((resolve,reject)=>{
+   const handle=window.setTimeout(()=>{WAITING.delete(requestId);reject(Error('Server did not respond. Check deployment and try again with the same transaction ID.'))},20000);
+   WAITING.set(requestId,{resolve,reject,handle});
+   const f=document.createElement('form');f.method='POST';f.action=CFG.endpoint;f.target='qr-transport';
+   const body={request_id:requestId,op:op,id_token:LOGIN_TOKEN,nonce:LOGIN_NONCE,payload:JSON.stringify(payload||{})};
+   Object.entries(body).forEach(([name,value])=>{const x=document.createElement('input');x.type='hidden';x.name=name;x.value=value;f.appendChild(x)});
+   document.body.appendChild(f);f.submit();f.remove();
+ });
+}
+function onReply(event){
+ // Apps Script HTML Service's response originates from a Google-owned sandbox.
+ // No response is accepted without its unpredictable outstanding request ID.
+ if(!/^https:\/\/(?:[a-z0-9-]+\.)*googleusercontent\.com$/.test(event.origin))return;
+ const msg=event.data;if(!msg||typeof msg!=='object'||!WAITING.has(msg.requestId))return;
+ const req=WAITING.get(msg.requestId);WAITING.delete(msg.requestId);clearTimeout(req.handle);
+ if(msg.ok)req.resolve(msg.result);else req.reject(Error(String(msg.error||'Request failed')));
+}
+window.addEventListener('message',onReply);
+const el=id=>document.getElementById(id);
+let DATA=null,PENDING=null,LOCKED=false,LAST_SUCCESS=false;
+const html=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const refs=()=>[
+ ...(DATA?.tests||[]).map(x=>({id:x.test_code,label:x.test_name,kind:'TEST'})),
+ ...(DATA?.items||[]).map(x=>({id:x.item_id,label:x.item_name,kind:'ITEM'})),
+ ...(DATA?.lots||[]).map(x=>({id:x.kit_id,label:x.kit_id,kind:'KIT'}))
+];
+function showStatus(msg,cls=''){el('status').textContent=msg;el('status').className='status '+cls}
+function selected(){return refs().find(x=>x.id===el('ref').value)}
+function chosenLot(){let r=selected();if(!r)return null;if(r.kind==='KIT')return DATA.lots.find(x=>x.kit_id===r.id);return DATA.lots.find(x=>x.kit_id===el('kit').value)}
+function setTab(tab){['log','labels','kits','recent'].forEach(x=>el('page-'+x).style.display=x===tab?'block':'none');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab))}
+function onRefChange(){
+ const r=selected();el('current-title').textContent=r?.label||'Select a QR code';
+ el('current-code').textContent=r?.id||'—';
+ const lotWrap=el('lot-wrap');lotWrap.style.display=r?.kind==='ITEM'?'block':'none';
+ if(r?.kind==='ITEM'){
+  const lots=DATA.lots.filter(l=>l.item_id===r.id);
+  el('kit').innerHTML='<option value="">Select a physical kit</option>'+lots.map(l=>'<option value="'+html(l.kit_id)+'">'+html(l.kit_id)+' / '+html(l.lot_number)+'</option>').join('');
+  if(lots.length===1)el('kit').value=lots[0].kit_id;
+ }
+ const kind=r?.kind==='TEST'?'TEST':'STOCK';
+ const opts=kind==='TEST'
+  ?[['TEST_PERFORMED','Test performed'],['TEST_REPEAT','Repeat test'],['TEST_QC','Quality control']]
+  :[['KIT_OPENED','Open kit'],['CONSUMED','Consume material'],['WASTED','Record wastage'],['RECEIVED','Receive into kit']];
+ el('action').innerHTML=opts.map(([id,name])=>'<option value="'+id+'">'+name+'</option>').join('');
+ const lot=chosenLot();
+ if(kind==='STOCK')el('action').value=lot && !(DATA.openedKits||[]).includes(lot.kit_id)?'KIT_OPENED':'CONSUMED';
+ onActionChange();renderStock();
+}
+function onActionChange(){el('qty').value=el('action').value==='KIT_OPENED'?'0':'1';el('qty').disabled=el('action').value==='KIT_OPENED'}
+function renderStock(){let r=selected(),lot=chosenLot();let t=el('stock-info');
+ if(r?.kind==='TEST'){t.textContent='Test activity only. No inventory deduction or official census update.';return}
+ if(!lot){t.textContent='Select a physical kit/package to see available stock.';return}
+ const balance=DATA.balances[lot.kit_id];
+ t.innerHTML='<div class="muted">Available demo stock</div><b>'+html(balance)+' '+html(lot.stock_unit)+'</b><div class="muted">Kit '+html(lot.kit_id)+' · Lot '+html(lot.lot_number)+' · Exp '+html(lot.expires_on)+'</div>';
+}
+function resetAfterSuccess(){PENDING=null;LAST_SUCCESS=false;LOCKED=false;el('new').style.display='none';el('save').disabled=false;el('save').textContent='Confirm transaction';el('ref').disabled=false;el('kit').disabled=false;el('action').disabled=false;el('notes').disabled=false;el('notes').value='';el('qty').disabled=el('action').value==='KIT_OPENED';onActionChange();showStatus('Ready for a new intentional activity.','')}
+function newId(){
+ const a=new Uint8Array(16);crypto.getRandomValues(a);
+ return 'QR-'+Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');
+}
+function txPayload(){
+ const r=selected();if(!r)throw Error('Choose a QR reference.');
+ const kit=chosenLot();
+ if(r.kind!=='TEST'&&!kit)throw Error('Choose a physical kit before recording inventory usage.');
+ const action=el('action').value,qty=Number(el('qty').value),notes=el('notes').value;
+ if(!Number.isInteger(qty)||qty<0||qty>100000)throw Error('Enter a valid whole-number quantity.');
+ if(action!=='KIT_OPENED'&&qty===0)throw Error('Quantity must be positive.');
+ return {transactionId:newId(),ref:r.id,action:action,quantity:qty,kitId:kit?.kit_id||'',notes:notes};
+}
+function formLocked(value){
+ el('ref').disabled=value;el('kit').disabled=value;el('action').disabled=value;el('qty').disabled=value||el('action').value==='KIT_OPENED';el('notes').disabled=value;
+}
+function submit(e){
+ if(e)e.preventDefault();if(LOCKED||LAST_SUCCESS)return;
+ if(!PENDING){try{PENDING=txPayload()}catch(err){showStatus(err.message,'error');return}}
+ LOCKED=true;formLocked(true);el('save').disabled=true;el('save').textContent='Saving…';showStatus('Submitting transaction '+PENDING.transactionId+'…');
+ rpc('record',PENDING).then(result=>{
+   LOCKED=false;LAST_SUCCESS=true;el('save').disabled=true;el('new').style.display='inline-block';
+   if(!result.duplicate && result.action==='KIT_OPENED' && result.kitId){
+     DATA.openedKits=Array.from(new Set([...(DATA.openedKits||[]),result.kitId]));
+   }
+   if(!result.duplicate && result.kitId && result.balance!==null)DATA.balances[result.kitId]=result.balance;
+   showStatus((result.duplicate?'Already recorded — no duplicate deduction. ':'Saved. ')+
+     'Transaction '+result.transactionId+(result.balance===null?'':'; new stock '+result.balance),'good');
+   refreshData(false);
+ }).catch(err=>{
+   LOCKED=false;el('save').disabled=false;el('save').textContent='Retry SAME transaction';
+   showStatus('Save status uncertain: '+(err?.message||err)+'. Retry uses the SAME ID. Do not start a new event until verified.','error');
+ });
+}
+function appLink(ref){
+ const u=new URL(window.location.origin+window.location.pathname);
+ u.searchParams.set('ref',ref);return u.toString();
+}
+function makeQR(containerId,code){
+ const target=el(containerId);if(!target)return;
+ const url=appLink(code);
+ if(!url){target.textContent='Deploy web app first';return}
+ target.innerHTML='';
+ new QRCode(target,{text:url,width:128,height:128,colorDark:'#172c36',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+}
+function renderLabels(){
+ const testEntries=[...DATA.tests.map(t=>({id:t.test_code,title:t.test_name,sub:'Test activity'})),
+   ...DATA.items.filter(i=>i.item_id==='ITEM-TIPS').map(i=>({id:i.item_id,title:i.item_name,sub:'Choose specific package'}))];
+ const kits=DATA.lots.map(l=>{let item=DATA.items.find(i=>i.item_id===l.item_id);return{id:l.kit_id,title:item?.item_name||l.item_id,sub:'Lot '+l.lot_number+' · Exp '+l.expires_on}});
+ function render(gridId,entries,isKit){
+  el(gridId).innerHTML=entries.map((x,i)=>'<div class="qr-label '+(isKit?'kit':'')+'"><div class="qr-img" id="'+gridId+'-'+i+'"></div><div class="title">'+html(x.title)+'</div><div class="code">'+html(x.id)+'</div><div class="sub">'+html(x.sub)+'</div></div>').join('');
+  entries.forEach((x,i)=>makeQR(gridId+'-'+i,x.id));
+ }
+ render('test-label-grid',testEntries,false);render('kit-label-grid',kits,true);
+}
+function renderRecent(){
+ el('recent').innerHTML=DATA.recent.length?DATA.recent.map(r=>'<tr><td>'+html(r.timestamp)+'</td><td>'+html(r.referenceId)+'</td><td>'+html(r.action)+'</td><td>'+html(r.quantity+' '+r.unit)+'</td><td><code>'+html(r.transactionId)+'</code></td></tr>').join(''):'<tr><td colspan="5" class="empty">No recorded demo transactions yet</td></tr>';
+}
+function adoptData(data,initial){
+  DATA=data;el('who').textContent=(data.staff?.email||'')+' · '+(data.count||0)+' events';
+  if(initial){
+   const all=refs(),preferred=all.some(x=>x.id===INITIAL_REF)?INITIAL_REF:'';
+   el('ref').innerHTML='<option value="">Choose a QR / activity</option>'+
+    all.map(x=>'<option value="'+html(x.id)+'">'+html(x.kind+' · '+x.label)+'</option>').join('');
+   el('ref').value=preferred;onRefChange();showStatus(preferred?'QR identified. Select activity and confirm.':'Select a QR-coded activity. No record is created until confirmation.','');
+   renderLabels();
+  }else renderStock();
+  renderRecent();
+
+}
+function refreshData(initial){
+ rpc('bootstrap',{}).then(data=>adoptData(data,initial))
+  .catch(err=>showStatus('Unable to load QR Logger: '+err.message,'error'));
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+ document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+ el('ref').addEventListener('change',()=>{if(!PENDING)onRefChange()});
+ el('kit').addEventListener('change',()=>{if(!PENDING){const lot=chosenLot();if(lot){el('action').value=(DATA.openedKits||[]).includes(lot.kit_id)?'CONSUMED':'KIT_OPENED';onActionChange()}renderStock()}});
+ el('action').addEventListener('change',()=>{if(!PENDING)onActionChange()});
+ el('form').addEventListener('submit',submit);
+ el('new').addEventListener('click',()=>{resetAfterSuccess();onRefChange()});
+ el('print-labels').addEventListener('click',()=>{document.body.classList.remove('print-kits');document.body.classList.add('print-labels');window.print()});
+ el('print-kits').addEventListener('click',()=>{document.body.classList.remove('print-labels');document.body.classList.add('print-kits');window.print()});
+ el('signout').addEventListener('click',signOut);
+ setTab('log');
+ window.addEventListener('load',launchGoogle,{once:true});
+});
+</script>
+</body>
+</html>
