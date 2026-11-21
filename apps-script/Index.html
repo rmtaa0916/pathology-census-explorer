@@ -170,6 +170,94 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
  #reportPreview #reportPaper{display:block!important}
 }
 
+
+/* LCP letter typography: 20 Nov 2026 MISD and Finance correspondence.
+   Arial 10 pt, approximately 105% line height, black text and restrained bold.
+   Scope all rules to report pages, not the interactive dashboard. */
+#reportPreview .report-paper{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:10pt!important;
+  font-weight:400;
+  line-height:1.05!important;
+  color:#000!important;
+}
+#reportPreview .report-paper :is(
+  h1,h2,h3,p,small,span,strong,b,td,th,div,
+  label,em,i,section,article){color:#000!important;opacity:1}
+#reportPreview .report-paper .report-reporting-department{
+  font-size:10pt;font-weight:700;margin-bottom:7px;letter-spacing:0
+}
+#reportPreview .report-paper .report-kicker{
+  font-size:10pt;font-weight:400;letter-spacing:0;
+  text-transform:none;margin-bottom:6px
+}
+#reportPreview .report-paper h1{
+  font-size:12pt;font-weight:700;letter-spacing:0;
+  line-height:1.15;margin-bottom:6px
+}
+#reportPreview .report-paper .report-subtitle{
+  font-size:10pt;font-weight:400;margin-bottom:10px
+}
+#reportPreview .report-paper .report-meta{
+  font-size:9.5pt;line-height:1.08;gap:8px 13px;
+  padding:7px 0 10px
+}
+#reportPreview .report-paper .report-meta b{font-weight:700}
+#reportPreview .report-paper .report-notice{
+  font-size:9.5pt;line-height:1.15;
+  padding:8px 10px;margin:12px 0
+}
+#reportPreview .report-paper h2{
+  font-size:10pt;font-weight:700;
+  text-transform:none;letter-spacing:0;
+  line-height:1.15;margin:15px 0 7px;padding-bottom:5px
+}
+#reportPreview .report-paper .report-metrics{
+  gap:7px;margin:10px 0
+}
+#reportPreview .report-paper .report-metric{
+  padding:9px 10px
+}
+#reportPreview .report-paper .report-metric span{
+  font-size:9pt;line-height:1.15;font-weight:400
+}
+#reportPreview .report-paper .report-metric strong{
+  font-size:11pt;line-height:1.2;
+  font-weight:700;margin-top:4px
+}
+#reportPreview .report-paper table{
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:9.5pt;line-height:1.12
+}
+#reportPreview .report-paper th{
+  font-size:9.5pt;font-weight:700;
+  padding:6px 7px
+}
+#reportPreview .report-paper td{
+  font-size:9.5pt;font-weight:400;
+  padding:5px 7px
+}
+#reportPreview .report-paper .report-footnote{
+  font-size:9.5pt;line-height:1.15;margin:9px 0
+}
+#reportPreview .report-paper .report-sign-grid{
+  gap:25px;margin:20px 0 4px
+}
+#reportPreview .report-paper .report-sign-grid>div{
+  font-size:10pt;line-height:1.15
+}
+#reportPreview .report-paper .report-sign-caption,
+#reportPreview .report-paper .report-signer-position,
+#reportPreview .report-paper .report-signer-date{
+  font-size:10pt;font-weight:400
+}
+#reportPreview .report-paper .report-signer-name{
+  font-size:10pt;font-weight:700
+}
+#reportPreview .report-paper .report-sign-line{border-color:#000}
+/* This counter describes the preview, so make it black as well. */
+#reportPreview .report-page-counter{color:#000;font-family:Arial,Helvetica,sans-serif}
+
 /* Formal reports use black text, while LCP stationery keeps its original colors. */
 #reportPreview .report-paper,#reportPreview .report-paper *:not(img){color:#000!important;text-shadow:none!important}
 /* The original LCP letterhead retains its full institutional colors. */
