@@ -66,6 +66,21 @@ header('Cache-Control: private, no-store');
 .batch-review div{display:flex;flex-direction:column;gap:3px;margin:6px 0}.batch-review span{color:#526e7d}
 @media(max-width:560px){.php-edit-form{grid-template-columns:1fr}.batchbar .batch-save{flex:1 1 100%}}
 
+
+/* Responsive drawers must display content, or a helpful empty state. */
+.drawer{visibility:hidden;pointer-events:none;overflow-x:hidden;overscroll-behavior:contain}
+.drawer.show{visibility:visible;pointer-events:auto}
+.drawer .drawer-head{display:flow-root;margin-bottom:12px}
+.drawer .drawer-title{font-size:23px;line-height:1.2;overflow-wrap:anywhere;margin:0 0 9px}
+.drawer .drawer-empty{padding:16px;margin:14px 0;background:#f7f9fa;border:1px solid #dce6e9;border-radius:8px;line-height:1.6;font-size:12px}
+.drawer .drawer-empty strong{display:block;margin-bottom:6px}
+.drawer .drawer-period-picker{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:15px 0;font-size:11px;font-weight:700}
+.drawer .drawer-period-picker select{width:100%;padding:10px;border:1px solid #ccdbe0;border-radius:7px;background:white;color:#203945;font:inherit}
+.drawer .drawer-records-table{overflow-x:auto;max-width:100%}
+.drawer .drawer-records-table table{min-width:360px}
+.drawer .drawer-records-table .sourcebtn{white-space:nowrap}
+@media(max-width:600px){.drawer{width:100vw;padding:19px 16px 36px}.drawer .drawer-title{font-size:21px}}
+
 /* Synced from latest Apps Script reporting controls, without changing census editor layout. */
 .report-signatures-form{width:100%;padding:15px;border:1px solid #d8e4e9;border-radius:9px;background:#fff}
 .report-signatures-form h3{margin:0 0 8px;font-size:13px;color:#243b47}
@@ -80,7 +95,7 @@ header('Cache-Control: private, no-store');
 
 </style></head>
 <body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><img src="<?=htmlspecialchars($brand['emblem'], ENT_QUOTES, 'UTF-8')?>" alt="Lung Center of the Philippines emblem"></div><div><b>Pathology Census Explorer</b><small>Lung Center of the Philippines</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="records"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>Source records</button><button class="nav" data-nav="reports"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h8"/></svg>Formal reports</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status"><div><span class="status-dot"></span><b><?php echo currentMode()==='live'?'Google Sheets connected':'Local sample preview'; ?></b></div><p><?php echo currentMode()==='live'?'Connected working-copy dataset':'Local fixture for testing report layouts'; ?></p></div></aside><main class="main"><div class="lcp-brand-band"><div><div class="lcp-institution">LUNG CENTER OF THE PHILIPPINES</div><div class="lcp-department">Pathology and Laboratory Medicine Department</div><div class="lcp-location">Quezon Avenue Extension, Quezon City, Philippines 1100</div></div><span class="lcp-module-label">IMMUNOLOGY CENSUS</span></div><div class="topbar"><div class="breadcrumb">LCP <span>/</span> Pathology and Laboratory Medicine <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">December 2023</span><a class="sourcebtn" href="report.php?period=all">Generate A4 report</a><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="<?php echo htmlspecialchars($data['source']['google_sheets_url'], ENT_QUOTES); ?>">Open demo Sheet ↗</a> <button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">Lung Center of the Philippines · Pathology and Laboratory Medicine Department · Immunology census.
-<?php if(currentMode()!=='live'): ?><strong>Local sample-data preview.</strong> Connect the authorized Google Sheets working copy for current values.<?php else: ?>Connected to a separate working-copy spreadsheet. Original workbook remains unchanged.<?php endif; ?> <span style="color:#126a64">PHP implementation · controlled access</span></div></main></div><div class="detail-backdrop" id="backdrop"></div><div class="drawer" id="drawer"></div>
+<?php if(currentMode()!=='live'): ?><strong>Local sample-data preview.</strong> Connect the authorized Google Sheets working copy for current values.<?php else: ?>Connected to a separate working-copy spreadsheet. Original workbook remains unchanged.<?php endif; ?> <span style="color:#126a64">PHP implementation · controlled access</span></div></main></div><div class="detail-backdrop" id="backdrop"></div><div class="drawer" id="drawer" aria-hidden="true"></div>
 <script>
 const DATA=<?php echo $json; ?>;
 const WRITES_ENABLED=<?php echo currentMode()==='live' && getenv('APP_WRITE_ENABLED')==='1' ? 'true':'false'; ?>;
@@ -125,12 +140,90 @@ function quality(){return `${pageIntro('Governance / synthetic data','Data quali
 <div class="kpi-grid">${metricCard('Demo count reconciliation','Pass',`${fmtInt(S.total_volume)} generated tests`,true)}${metricCard('Source isolation','Enabled','DEMO - Weekly Census tab only')}${metricCard('Test categories',fmtInt(EXAMS.length),'Simulated examinations')}${metricCard('Reporting periods','4','December 2023 demo')}</div>
 <div class="warning"><span class="warn-ico">!</span><div><strong>Never interpret demo values as real pathology census data.</strong><p>Test counts and monetary amounts are artificial. Source connection requires Google API credentials on a private PHP server.</p></div></div>
 <div class="card"><h3>Category totals</h3><div class="table-wrap">${mixTable()}</div></div>`}
-function showExam(name){const t=EXAMS.find(x=>x.test===name);if(!t)return;const es=ENTRIES.filter(e=>e.test===name && e.volume>0);document.getElementById('drawer').innerHTML=`<button class="close" id="closeDrawer">Close ×</button><p class="eyebrow">Synthetic examination detail</p><h2 style="font-size:25px;letter-spacing:-.7px;margin:0 0 11px">${escapeHtml(name)}</h2><p class="fine">December 2023 demo · test counts, not unique patients</p><div class="mini-grid" style="margin:18px 0">${[['All activity',t.volume],['Patient-section',t.patient_volume],['STAT',t.stat_volume],['Illustrative amount',fmtMoney(t.reported_income)]].map(k=>`<div class="mini"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div><h3 style="font-size:13px;margin:21px 0 10px">Demo category detail</h3><div class="table-wrap"><table class="t"><thead><tr><th>Section · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead><tbody>${es.map(e=>`<tr><td>${e.section==='inpatient'?'IP':e.section==='outpatient'?'OP':'Other'} · ${escapeHtml(e.channel)}</td><td class="right">${e.volume}</td><td class="right">${fmtMoney(e.reported_income)}</td>${WRITES_ENABLED?`<td><button class="sourcebtn editdemo" data-edit-row="${e.source_rows[selectedInterval]||''}" data-period="${INTERVALS[selectedInterval].label}" data-test="${escapeHtml(e.test)}" data-old="${e.weeks[selectedInterval]}">Edit selected interval</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4">No demo examinations</td></tr>'}</tbody></table></div><p class="fine" style="margin-top:18px">Synthetic demo data only. Edit buttons, when enabled, update only the demo worksheet.</p>`;
-document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').classList.add('show');document.getElementById('closeDrawer').onclick=closeDrawer;
-if(WRITES_ENABLED)document.querySelectorAll('.editdemo').forEach(b=>b.onclick=async()=>{if(!b.dataset.editRow)return;const n=prompt('New demo count for '+b.dataset.period+' (currently '+b.dataset.old+'):',b.dataset.old);if(n===null)return;const v=Number(n);if(!Number.isInteger(v)||v<0||v>100000){alert('Enter a non-negative whole number.');return;}try{const resp=await fetch('api/update.php',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({sheetRow:Number(b.dataset.editRow),count:v,expectedCount:Number(b.dataset.old),period:b.dataset.period,test:b.dataset.test,csrf:CSRF})});const result=await resp.json();if(!resp.ok||!result.success)throw new Error(result.error||'Update failed');location.reload();}catch(e){alert(e.message);}});
+
+let drawerReturnFocus=null;
+function activateDrawer(title){
+  const drawer=document.getElementById('drawer');
+  if(!drawer.innerHTML.trim()){
+    drawer.innerHTML='<div class="drawer-head"><button type="button" class="close" id="closeDrawer">Close ×</button><h2 class="drawer-title">Details unavailable</h2></div><div class="drawer-empty" role="status">The requested details could not be displayed. Refresh the page and try again.</div>';
+    drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
+  }
+  if(!drawer.classList.contains('show'))drawerReturnFocus=document.activeElement;
+  drawer.setAttribute('role','dialog');
+  drawer.setAttribute('aria-modal','true');
+  drawer.setAttribute('aria-label',title);
+  drawer.setAttribute('aria-hidden','false');
+  drawer.scrollTop=0;
+  document.getElementById('backdrop').classList.add('show');
+  drawer.classList.add('show');
+  const button=drawer.querySelector('#closeDrawer');
+  if(button)button.focus({preventScroll:true});
 }
-function closeDrawer(){document.getElementById('backdrop').classList.remove('show');document.getElementById('drawer').classList.remove('show')}
-document.getElementById('backdrop').addEventListener('click',closeDrawer);document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+function examinationIntervalRows(name,index=selectedInterval){
+  const period=INTERVALS[Number(index)];
+  if(!period)return [];
+  return RECORDS.filter(row=>row.test===name&&row.period===period.label);
+}
+function examDetailMarkup(name,index=selectedInterval){
+  const test=EXAMS.find(x=>x.test===name);
+  const period=INTERVALS[Number(index)];
+  if(!test||!period)return `<div class="drawer-head"><button type="button" id="closeDrawer" class="close">Close ×</button>
+    <h2 class="drawer-title">Details unavailable</h2></div>
+    <div class="drawer-empty" role="status">No matching examination or reporting period is available. Refresh the dashboard and retry.</div>`;
+  const rows=examinationIntervalRows(name,index);
+  const count=rows.reduce((sum,row)=>sum+Number(row.count||0),0);
+  const amount=rows.reduce((sum,row)=>sum+Number(row.amount||0),0);
+  return `<div class="drawer-head"><button type="button" id="closeDrawer" class="close">Close ×</button>
+    <p class="eyebrow">Examination detail</p><h2 class="drawer-title">${escapeHtml(name)}</h2>
+    <p class="fine">December 2023 · Counts are examinations, not unique patients</p></div>
+    <div class="mini-grid" style="margin:14px 0">
+      <div class="mini"><small>December total</small><b>${fmtInt(test.volume)}</b></div>
+      <div class="mini"><small>Calculated December amount</small><b>${fmtMoney(test.reported_income)}</b></div>
+      <div class="mini"><small>Selected interval count</small><b>${fmtInt(count)}</b></div>
+      <div class="mini"><small>Interval amount</small><b>${fmtMoney(amount)}</b></div>
+    </div>
+    <label class="drawer-period-picker" for="drawerExamPeriod">Reporting interval
+      <select id="drawerExamPeriod">${INTERVALS.map((x,i)=>`<option value="${i}" ${i===Number(index)?'selected':''}>${escapeHtml(x.label)}, 2023</option>`).join('')}</select>
+    </label>
+    <h3 style="font-size:13px;margin:17px 0 9px">Source records · ${escapeHtml(period.label)}</h3>
+    ${rows.length?`<div class="drawer-records-table"><table class="t">
+      <thead><tr><th>Group · billing · priority</th><th class="right">Count</th><th class="right">Amount</th>${WRITES_ENABLED?'<th>Edit</th>':''}</tr></thead>
+      <tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.patientGroup)} · ${escapeHtml(r.billing)} · ${escapeHtml(r.priority)}</td>
+      <td class="right">${fmtInt(r.count)}</td><td class="right">${fmtMoney(r.amount)}</td>
+      ${WRITES_ENABLED?`<td><button class="sourcebtn" type="button" data-drawer-edit-row="${r.sheetRow}">Edit inputs</button></td>`:''}</tr>`).join('')}
+      </tbody></table></div>`:
+      '<div class="drawer-empty" role="status"><strong>No source rows in this interval.</strong>Choose another interval above to view available records. There is no edit action for this period.</div>'}
+    <p class="fine" style="margin-top:17px">Edits, when enabled, are staged and saved only to the configured census worksheet.</p>`;
+}
+function showExam(name,index=selectedInterval){
+  if(batchSaving||batchUnconfirmed)return;
+  if(!INTERVALS[Number(index)])index=selectedInterval;
+  const drawer=document.getElementById('drawer');
+  drawer.innerHTML=examDetailMarkup(name,index);
+  activateDrawer('Examination detail: '+name);
+  drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
+  const picker=drawer.querySelector('#drawerExamPeriod');
+  if(picker)picker.addEventListener('change',e=>{
+    const next=Number(e.target.value);if(INTERVALS[next])showExam(name,next);
+  });
+  drawer.querySelectorAll('[data-drawer-edit-row]').forEach(button=>
+    button.addEventListener('click',()=>editSourceRecord(Number(button.dataset.drawerEditRow))));
+}
+function closeDrawer(){
+  const drawer=document.getElementById('drawer');
+  document.getElementById('backdrop').classList.remove('show');
+  drawer.classList.remove('show');
+  drawer.setAttribute('aria-hidden','true');
+  drawer.removeAttribute('aria-label');
+  drawer.removeAttribute('aria-modal');
+  drawer.innerHTML='';
+  if(drawerReturnFocus&&drawerReturnFocus.isConnected&&typeof drawerReturnFocus.focus==='function'){
+    drawerReturnFocus.focus({preventScroll:true});
+  }
+  drawerReturnFocus=null;
+}
+document.getElementById('backdrop').addEventListener('click',closeDrawer);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('drawer').classList.contains('show'))closeDrawer()});
 
 const INTERVALS=[{label:'Dec 1–7',date:'2023-12-01',n:0},{label:'Dec 8–14',date:'2023-12-08',n:1},{label:'Dec 15–21',date:'2023-12-15',n:2},{label:'Dec 22–31',date:'2023-12-22',n:3}];
 let selectedInterval=0, periodSection='all';
@@ -227,7 +320,7 @@ function editSourceRecord(rowNumber){
         <button type="submit" class="batch-save">Stage change</button></div>
       <div id="phpEditError" class="fine full" role="alert"></div>
     </form>`;
-  drawer.classList.add('show');document.getElementById('backdrop').classList.add('show');
+  activateDrawer('Edit census record: '+record.test);
   drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
   drawer.querySelector('#cancelRecord').addEventListener('click',closeDrawer);
   const form=drawer.querySelector('#phpEditForm');
@@ -271,7 +364,7 @@ function reviewPHPBatch(){
       <div>${editFields.filter(f=>c.expected[f]!==c.values[f]).map(f=>`<span>${escapeHtml(f)}: ${escapeHtml(c.expected[f])} → <b>${escapeHtml(c.values[f])}</b></span>`).join('')}</div>
       <button class="sourcebtn" data-drop-staged="${c.sheetRow}">Remove</button></div>`).join('')}
     <button class="batch-save" id="submitReviewedBatch">Save all ${changes.length} records</button>`;
-  drawer.classList.add('show');document.getElementById('backdrop').classList.add('show');
+  activateDrawer('Review staged changes');
   drawer.querySelector('#closeDrawer').addEventListener('click',closeDrawer);
   drawer.querySelectorAll('[data-drop-staged]').forEach(b=>b.addEventListener('click',()=>{
     stagedChanges.delete(Number(b.dataset.dropStaged));closeDrawer();render();if(stagedChanges.size)reviewPHPBatch();
