@@ -472,10 +472,10 @@ function records(){
             <td class="right">${fmtMoney(v.amount)}</td>
             <td><button type="button" class="edit-row-btn" data-record-edit="${r.sheetRow}">${staged?'Edit staged':'Edit'}</button></td>
           </tr>`;
-        })).join('')||'<tr><td colspan="8" class="empty">No records match these filters.</td></tr>'}
+        }).join('')||'<tr><td colspan="8" class="empty">No records match these filters.</td></tr>'}
       </tbody></table></div>
       <div class="period-head">
-        <p class="fine">Page ${recordPage+1} of ${pages} · source values synchronized with the Google Sheet after each save.</p>
+        <p class="fine">Page ${recordPage+1} of ${pages} · unsaved edits stay in the browser until Save all.</p>
         <div class="record-actions">
           <button type="button" class="sourcebtn" data-record-page="-1" ${recordPage===0?'disabled':''}>Previous</button>
           <button type="button" class="sourcebtn" data-record-page="1" ${recordPage>=pages-1?'disabled':''}>Next</button>
