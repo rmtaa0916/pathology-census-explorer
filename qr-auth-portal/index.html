@@ -57,11 +57,16 @@ footer{padding:14px 0;color:var(--muted);font-size:11px}
 #qr-scan-panel{padding:12px;margin:11px 0;background:#f0f7f6;border:1px solid var(--line);border-radius:10px}
 #qr-camera{width:100%;max-height:310px;aspect-ratio:4/3;object-fit:cover;border-radius:9px;background:#13272c}
 #qr-camera-status{font-size:12px;color:var(--muted);margin:8px 0}
+#start-qr-scan{min-height:48px;touch-action:manipulation;border-color:var(--teal);color:var(--teal);font-weight:750}
+#qr-scan-feedback{margin:7px 0 11px;padding:10px 12px;border-radius:9px;font-size:13px;background:#eaf4f3;color:#17554e}
+#qr-scan-feedback.error{background:#fff2ed;color:#87381c}
+@media(max-width:680px){#start-qr-scan{width:100%}}
 #signout{border:0;padding:6px;background:transparent;color:var(--teal);font-size:12px;text-decoration:underline}
 @media print{#login-panel,#signout{display:none!important}}
 </style>
 <script src="config.js"></script>
 <script src="qrcode.min.js"></script>
+<script src="jsqr.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -89,9 +94,11 @@ footer{padding:14px 0;color:var(--muted);font-size:11px}
   <div class="card">
    <h2>Record laboratory activity</h2>
    <p class="muted">Scan multiple labels in this signed-in page, or choose a reference below. Every activity still needs confirmation.</p>
-   <div class="row hide-print" style="margin:8px 0 12px"><button type="button" class="secondary" id="start-qr-scan">Scan next QR — stay signed in</button></div>
+   <div class="row hide-print" style="margin:8px 0 5px"><button type="button" class="secondary" id="start-qr-scan">Scan next QR — stay signed in</button></div>
+   <div id="qr-scan-feedback" class="hide-print" role="status" aria-live="polite">Tap to open the camera in this tab. No sign-in or transaction is triggered by scanning.</div>
    <div id="qr-scan-panel" class="hide-print" hidden>
     <video id="qr-camera" playsinline autoplay muted></video>
+    <canvas id="qr-scan-canvas" hidden aria-hidden="true"></canvas>
     <div id="qr-camera-status" role="status">Point your camera at a QR Logger label.</div>
     <button type="button" class="secondary" id="stop-qr-scan">Close camera</button>
    </div>
@@ -305,8 +312,12 @@ function adoptData(data,initial){
   renderRecent();
 
 }
-// Keep the scanning session in this authenticated browser tab. No scanned QR auto-saves.
+// Scan in the authenticated tab. Only a validated reference is selected; scanning never saves.
 const QR_CAMERA={stream:null,detector:null,timer:null,epoch:0};
+function scanMessage(msg,error=false){
+ const target=el('qr-scan-feedback');
+ target.textContent=msg;target.className='hide-print'+(error?' error':'');
+}
 function stopQrScan(message=''){
  QR_CAMERA.epoch++;
  if(QR_CAMERA.timer!==null)clearTimeout(QR_CAMERA.timer);
@@ -316,7 +327,9 @@ function stopQrScan(message=''){
  if(QR_CAMERA.stream)QR_CAMERA.stream.getTracks().forEach(track=>track.stop());
  QR_CAMERA.stream=null;QR_CAMERA.detector=null;
  el('qr-scan-panel').hidden=true;
- if(message)showStatus(message);
+ el('start-qr-scan').disabled=false;
+ el('start-qr-scan').textContent='Scan next QR — stay signed in';
+ if(message)scanMessage(message);
 }
 function qrRefFromLink(raw){
  try{
@@ -326,46 +339,87 @@ function qrRefFromLink(raw){
   return refs().some(x=>x.id===ref)?ref:'';
  }catch(_){return ''}
 }
+function decodeQrWithJs(video){
+ if(typeof jsQR!=='function')return '';
+ const canvas=el('qr-scan-canvas');
+ if(!video.videoWidth||!video.videoHeight||!canvas)return '';
+ const width=Math.min(480,video.videoWidth);
+ const height=Math.max(1,Math.round(video.videoHeight*width/video.videoWidth));
+ canvas.width=width;canvas.height=height;
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});
+ if(!ctx)return '';
+ ctx.drawImage(video,0,0,width,height);
+ const pixels=ctx.getImageData(0,0,width,height);
+ const hit=jsQR(pixels.data,width,height,{inversionAttempts:'attemptBoth'});
+ return hit?.data||'';
+}
 async function readQrFrame(epoch){
  if(!QR_CAMERA.stream||QR_CAMERA.epoch!==epoch)return;
  try{
   const video=el('qr-camera');
   if(video.readyState>=2){
-   const hits=await QR_CAMERA.detector.detect(video);
+   let hits=[];
+   if(QR_CAMERA.detector){
+    try{hits=await QR_CAMERA.detector.detect(video)}
+    catch(_){QR_CAMERA.detector=null;scanMessage('Using compatible camera QR decoding…')}
+   }
    if(QR_CAMERA.epoch!==epoch)return;
+   if(!QR_CAMERA.detector){
+    const raw=decodeQrWithJs(video);
+    if(raw)hits=[{rawValue:raw}];
+   }
    for(const hit of hits){
     const ref=qrRefFromLink(hit.rawValue);
-    if(!ref){el('qr-camera-status').textContent='QR not recognized. Scan a QR Logger label.';continue}
-    stopQrScan();
+    if(!ref){el('qr-camera-status').textContent='This QR is not one of the registered laboratory labels.';continue}
+    stopQrScan('QR recognized: '+ref+'. Select the activity and confirm below.');
     el('ref').value=ref;onRefChange();
     showStatus('QR identified. Select activity and confirm. No transaction was saved.');
     return;
    }
   }
- }catch(_){if(QR_CAMERA.epoch===epoch)el('qr-camera-status').textContent='Hold the QR label steady.'}
- if(QR_CAMERA.epoch===epoch)QR_CAMERA.timer=setTimeout(()=>readQrFrame(epoch),250);
+ }catch(_){
+  if(QR_CAMERA.epoch===epoch)el('qr-camera-status').textContent='Hold the QR label steady and keep it in view.';
+ }
+ if(QR_CAMERA.epoch===epoch)QR_CAMERA.timer=setTimeout(()=>readQrFrame(epoch),300);
 }
 async function startQrScan(){
- if(!DATA)return showStatus('Sign in before scanning.','error');
- if(LOCKED||PENDING)return showStatus('Finish or retry the pending transaction before scanning another QR.','error');
- if(typeof BarcodeDetector==='undefined'||!navigator.mediaDevices?.getUserMedia){
-  return showStatus('In-app camera scanning is unsupported. Use your phone camera or select a reference below.','error');
- }
- if(LAST_SUCCESS)resetAfterSuccess();
+ scanMessage('Preparing camera…');
+ if(!DATA)return scanMessage('Please sign in before scanning a QR label.',true);
+ if(LAST_SUCCESS)resetAfterSuccess(); // Successful events must not block the next scan.
+ if(LOCKED||PENDING)return scanMessage('Previous transaction has not finished. Confirm or retry it before scanning a new label.',true);
+ if(!navigator.mediaDevices?.getUserMedia)return scanMessage('This browser does not provide camera access. Select a reference below or use a supported browser.',true);
  stopQrScan();
  const epoch=QR_CAMERA.epoch;
  el('qr-scan-panel').hidden=false;
- el('qr-camera-status').textContent='Opening rear camera…';
+ el('qr-camera-status').textContent='Point your camera at a QR label.';
+ el('start-qr-scan').disabled=true;
+ el('start-qr-scan').textContent='Opening camera…';
+ scanMessage('Requesting permission to use the rear camera…');
  try{
-  QR_CAMERA.detector=new BarcodeDetector({formats:['qr_code']});
+  // Some mobile browsers do not implement BarcodeDetector. The bundled jsQR is an offline fallback.
+  try{if(typeof BarcodeDetector==='function')QR_CAMERA.detector=new BarcodeDetector({formats:['qr_code']})}
+  catch(_){QR_CAMERA.detector=null}
+  if(!QR_CAMERA.detector&&typeof jsQR!=='function')throw new Error('No QR decoder available.');
   const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
   if(QR_CAMERA.epoch!==epoch){stream.getTracks().forEach(track=>track.stop());return}
   QR_CAMERA.stream=stream;
+  el('qr-camera').srcObject=stream;
   await el('qr-camera').play();
-  if(QR_CAMERA.epoch===epoch)readQrFrame(epoch);
- }catch(_){
+  if(QR_CAMERA.epoch!==epoch)return;
+  el('start-qr-scan').disabled=false;
+  el('start-qr-scan').textContent='Restart camera';
+  scanMessage('Camera active. Aim at a laboratory QR label; no activity will be saved automatically.');
+  readQrFrame(epoch);
+ }catch(err){
+  if(QR_CAMERA.epoch!==epoch)return;
   stopQrScan();
-  showStatus('Camera unavailable or permission denied. Use your phone camera or select a reference below.','error');
+  const name=String(err?.name||'');
+  const msg=name==='NotAllowedError'||name==='PermissionDeniedError'
+   ?'Camera permission was denied. Allow camera access in your browser settings, then tap Scan next QR again.'
+   :name==='NotFoundError'
+    ?'No camera was found on this device. You can select a reference below.'
+    :'Camera could not start on this browser. Try Chrome or select a reference below.';
+  scanMessage(msg,true);
  }
 }
 function refreshData(initial){
@@ -384,7 +438,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  el('print-kits').addEventListener('click',()=>{document.body.classList.remove('print-labels');document.body.classList.add('print-kits');window.print()});
  el('signout').addEventListener('click',signOut);
  el('start-qr-scan').addEventListener('click',startQrScan);
- el('stop-qr-scan').addEventListener('click',()=>stopQrScan());
+ el('stop-qr-scan').addEventListener('click',()=>stopQrScan('Camera closed. Tap Scan next QR to reopen.'));
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&QR_CAMERA.stream)stopQrScan()});
  window.addEventListener('pagehide',()=>{if(QR_CAMERA.stream)stopQrScan()});
  setTab('log');
