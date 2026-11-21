@@ -16,25 +16,25 @@ This live link points to the Google Apps Script deployment, not the PHP code on 
 | Overview, reporting intervals and examination rankings | Yes | Yes |
 | Edit existing examination inputs | Yes, when live editing enabled | Yes |
 | **Stage several records and Save all once** | Yes — atomic Sheets batch request | Yes — guarded grouped writes |
-| **A4 formal immunology census report** | Yes — \`report.php\` | Yes — in-app print preview |
+| **A4 laboratory census with full-color letterhead** | Yes — `report.php` | Yes — in-app preview |
 | One reporting interval or **full December 2023 coverage** | Yes | Yes |
-| Detailed category appendix | Optional | Optional |
+| Detailed category appendix | Optional; multiple A4 pages | Optional; multiple A4 pages |
 | Browser Print / Save as PDF | Yes | Yes |
+| Signatory names, positions and dates | Required before generation | Required before generation |
+| Calculated amounts | Optional; off by default | Optional; off by default |
 | Automatic source-schema email alerts | Not yet ported | Yes, after trigger installation |
 
 See [Feature parity and implementation map](docs/FEATURE_PARITY.md) for concrete paths, data model and known limitations.
 
-## A4 report generation
+## A4 laboratory census reports (Apps Script parity)
 
-Open **Formal reports** in either dashboard. Select one interval (December 1–7, 8–14, 15–21, or 22–31) or **full coverage (December 1–31, 2023)**. Optionally include the grouped examination × patient-group × billing × priority appendix. Select **Generate A4 report**, review the draft, then use **Print / Save PDF**.
+The PHP report matches the current Apps Script institutional census presentation: the dashboard uses the clean LCP emblem and printed reports use the full **original-color LCP letterhead** on **every A4 page**. Report typography is **black Arial 10 pt** with about 105% line spacing, restrained bold section headings, and plain statistical tables. Page margins reserve **47 mm above, 46 mm below, and 16 mm at the sides** to avoid the letterhead and footer. The category-detail appendix repeats across additional pages.
 
-The report includes the LCP emblem and department header, reporting dates, generation timestamp, totals, patient-group/billing/priority breakdowns, examination table and **blank** prepared/reviewed sign-off lines. It is marked **for internal verification**, not institutional approval. Counts are examinations, not distinct patients; calculated amounts are not proof of collected revenue.
+The standard **Immunology Laboratory Census** emphasizes service counts: reporting period, preparation date, total examinations, patient/employee group counts, period comparison, billing, priority, examination by test, and table totals. Internal verification disclaimers, Google Sheets wording and numbered signatory headings are omitted. **Calculated amounts** are optional and **off by default**; if selected, they are labeled as count × rate rather than collected revenue.
 
-The PHP endpoint is authenticated and can also be reached as:
+Both signatories require **full name, position and date**. The second role is **Noted by**, **Reviewed by**, or **Approved by**. Names, positions and dates print under signature lines, without placeholders or “Date:” prefixes. Use **Formal reports** in the PHP dashboard and submit **Generate A4 report**. The form uses **POST** so names are not embedded in the report URL. The authenticated `/report.php` route also shows a signatory entry form when opened directly instead of generating an unsigned page.
 
-- \`/report.php?period=all\` — full coverage.
-- \`/report.php?period=2\` — December 15–21.
-- \`/report.php?period=2&detail=1\` — selected period with detailed appendix.
+The PHP app requires its own credentialed Google Sheets connection; it does not inherit the Apps Script deployment, sessions or authentication. Local PHP preview is synthetic and prints **SAMPLE DATA ONLY** to avoid misrepresenting test values as institutional records. The original source workbook is not modified by the report generator.
 
 ## Multi-record editing
 
