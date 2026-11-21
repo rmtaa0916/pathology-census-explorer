@@ -5,6 +5,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start(['cookie_httponly'=>t
 $_SESSION['csrf'] ??= bin2hex(random_bytes(24));
 try { $data = fetchDataset(); }
 catch (Throwable $error) { http_response_code(503);header('Content-Type: text/plain; charset=utf-8');exit('Dashboard unavailable: ' . $error->getMessage()); }
+$brand = require __DIR__ . '/../src/LcpBrandAssets.php';
 $json = json_encode($data, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR);
 header('Cache-Control: private, no-store');
 ?>
@@ -64,8 +65,21 @@ header('Cache-Control: private, no-store');
 .record-total strong{color:#174d72}.batch-review{margin:12px 0;border-bottom:1px solid #e6edef;padding:12px 0;font-size:11px;line-height:1.6}
 .batch-review div{display:flex;flex-direction:column;gap:3px;margin:6px 0}.batch-review span{color:#526e7d}
 @media(max-width:560px){.php-edit-form{grid-template-columns:1fr}.batchbar .batch-save{flex:1 1 100%}}
+
+/* Synced from latest Apps Script reporting controls, without changing census editor layout. */
+.report-signatures-form{width:100%;padding:15px;border:1px solid #d8e4e9;border-radius:9px;background:#fff}
+.report-signatures-form h3{margin:0 0 8px;font-size:13px;color:#243b47}
+.report-signature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%}
+.report-signature-grid fieldset{min-width:0;border:1px solid #d8e4e9;border-radius:8px;padding:12px}
+.report-signature-grid legend{font-size:12px;font-weight:700;padding:0 5px}
+.report-form .report-signature-grid label{display:flex;flex-direction:column;align-items:stretch;gap:5px;margin:8px 0 12px;font-size:11px}
+.report-form .report-signature-grid input,.report-form .report-signature-grid select{min-width:0;width:100%;max-width:none;background:#fff;border:1px solid #ccdbe0;border-radius:6px;padding:10px;color:#193744;font-size:12px}
+.report-hint{font-size:11px;color:#48606b;line-height:1.5;margin:10px 0 0}
+.report-appendix{align-self:stretch}
+@media(max-width:600px){.report-signature-grid{grid-template-columns:1fr}}
+
 </style></head>
-<body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><img src="data:image/webp;base64,UklGRuoEAABXRUJQVlA4IN4EAABwGQCdASpoADgAPsFQoUwnpKMiLJF+GPAYCWYAyBim0JSgbH3Og+v4lIT2/fO6t6r/Vct8fi/tPNj9PPGHam3y/RvBlvgtVNWBNG8p2bMxc1t8MLne3d7n+9pLitmylHF8GqrgZMwJtJLlC4gEWqLJ4Cx+M5BkshX4aCJqAr4TwBjZe3aDQWI3BFgHPC9YJxEtpG8NG9aOzxcisEOTEMLvZtctBSFQ4F0OLuESm/uj7l4TBk9QikDknh4MVkQnpAQeNxPWNnWPXZIn+YwJooeOWMh/AAD+/pOMW/UnViKtrj4EbjQ4Api7b1GUMtFRPFhSymgjiu6CzxRp5ehShohK4v4Q+/e/3o+ekL2cLA868WxEjDTB9dZbHkLT2CeJisDSdLNqcnh7Oob4zOwhiNnKLT5Q1+7O8l/FKlIZMVynlbJ6ng/fYmFF/qf23S/HUcjq4WQVFLpsc/u0xaZLuT7k4CuowIDrDok4GOF0x2rI9GmYg1wTtl2Vq16LduJGYZG+na53DuzGtxaFTz3qdqYk9PcweJOjRrIqbFFbwRMq/j5zMCTAI+YapITdypDb56POSLXUSLentRAXd/Sa1R2rdBQFxeZ6oGxbM3HdtBvAtYjpeOqx3w+Vxb4Tkr7jbC/v8VV0kYi9rSOu8TwM8z8htB+hXQq+O673SrE5DLicuGfYXzaTM38KFLMQBNB+dcdPIa+HPUMh9ZsawgJ53vi8tBHjGsuH+zvrP9RjGciMrv00mfXEF3i8P3TEzdJtKGOdGkjZpbKVddWouLLSrvMiAUkPP/g5a3ymJLe8606gNJR/Sk+HtIinYexbUADg4P1gEoQG4AL2btSAHwuFZ/OroF8yMyf/pJ4ptqvwKFu+KohUlOzXGOvdAbtzokVMTe4KBuXO5Bj1aBZZFuGTGsu8PHk38DWvxR6aD+V4WIfSJ0x1YlCkDrWSHYLEmBta4bBPNOOJ3leSaL//3t9NAUbhU2P8tKSkEFv79Tq+kq6TMW4jkJBfZRaPi5E7G/NJyDTQh+P5KUmhnE0zmBaeImU0kJyMN3ZKgbXdLftn8OT5vagunspq+VqwdmUP+ZdXwfssh985tT1XxEA5bq/CanOqt8NQx8JY+B6WL5kErOP6UoPTzbkQumec2EGK9i1oXhJu79943aiPtpBAUq8y3CCA/eO62jnQlVlLqIp8tzjX4LK9o+kaWXPq3sh3xbFnHC0zHvTUnT1aKWux0OJMe3/V++wpHWN4arHzxkhgCEj25h20g1dhPwswUwZlMt1r9ZYA52fKh91mvw/eIxvmfGd7oFX8vxVXFvz4cbZWJTinJy3VA/34FD2ptey6TTJRNtedq41LRRBh5BHWP5A50aIjvN1uGYpn4RaGqP+SoX0XMErkm8v8wUHae/aON4R6090dRIVooCVfxtapLDbET71NycG4t513fl/4Cufa3BbbuLwWBnFSnqo0TcyWpO5lgZvVjafvyzB+g3/cu4inGIeq1j53DmE/vqNuCkNOkiRzJ+wB8l+AD/Og1bCKrLnpImdeyOpY75/5zB828EZj/ifOaOJYwWNKW1JAe9j40C1uWdmlMD5wozRQYqASy0agYV+P7yoW6SLTX93qfnS6kLetLQ/0A2yn6PnQwNK8lO2gc8j28MBIgt2v+OwBsQAA" alt="Lung Center of the Philippines emblem"></div><div><b>Pathology Census Explorer</b><small>Lung Center of the Philippines</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="records"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>Source records</button><button class="nav" data-nav="reports"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h8"/></svg>Formal reports</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status"><div><span class="status-dot"></span><b><?php echo currentMode()==='live'?'Google Sheets connected':'Local sample preview'; ?></b></div><p><?php echo currentMode()==='live'?'Connected working-copy dataset':'Local fixture for testing report layouts'; ?></p></div></aside><main class="main"><div class="lcp-brand-band"><div><div class="lcp-institution">LUNG CENTER OF THE PHILIPPINES</div><div class="lcp-department">Pathology and Laboratory Medicine Department</div><div class="lcp-location">Quezon Avenue Extension, Quezon City, Philippines 1100</div></div><span class="lcp-module-label">IMMUNOLOGY CENSUS</span></div><div class="topbar"><div class="breadcrumb">LCP <span>/</span> Pathology and Laboratory Medicine <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">December 2023</span><a class="sourcebtn" href="report.php?period=all">Generate A4 report</a><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="<?php echo htmlspecialchars($data['source']['google_sheets_url'], ENT_QUOTES); ?>">Open demo Sheet ↗</a> <button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">Lung Center of the Philippines · Pathology and Laboratory Medicine Department · Immunology census.
+<body><div class="shell"><aside class="side"><div class="logo"><div class="logo-mark"><img src="<?=htmlspecialchars($brand['emblem'], ENT_QUOTES, 'UTF-8')?>" alt="Lung Center of the Philippines emblem"></div><div><b>Pathology Census Explorer</b><small>Lung Center of the Philippines</small></div></div><div class="nav-kicker">WORKSPACE</div><div class="menu" id="navigation"><button class="nav active" data-nav="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button><button class="nav" data-nav="periods"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 10h18"/></svg>Reporting intervals</button><button class="nav" data-nav="examinations"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h14M5 20h9"/></svg>Examinations</button><button class="nav" data-nav="breakdown"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V5m5 15v-9m5 9V8"/></svg>Workload &amp; income</button><button class="nav" data-nav="records"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>Source records</button><button class="nav" data-nav="reports"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h8"/></svg>Formal reports</button><button class="nav" data-nav="quality"><svg viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 6-4 9-9 10-5-1-9-4-9-10V6l9-4Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>Data quality</button></div><div class="spacer"></div><div class="source-status"><div><span class="status-dot"></span><b><?php echo currentMode()==='live'?'Google Sheets connected':'Local sample preview'; ?></b></div><p><?php echo currentMode()==='live'?'Connected working-copy dataset':'Local fixture for testing report layouts'; ?></p></div></aside><main class="main"><div class="lcp-brand-band"><div><div class="lcp-institution">LUNG CENTER OF THE PHILIPPINES</div><div class="lcp-department">Pathology and Laboratory Medicine Department</div><div class="lcp-location">Quezon Avenue Extension, Quezon City, Philippines 1100</div></div><span class="lcp-module-label">IMMUNOLOGY CENSUS</span></div><div class="topbar"><div class="breadcrumb">LCP <span>/</span> Pathology and Laboratory Medicine <span>/</span> <strong>Immunology census</strong></div><div class="top-actions"><span class="period">December 2023</span><a class="sourcebtn" href="report.php?period=all">Generate A4 report</a><a class="sourcebtn" target="_blank" rel="noopener noreferrer" href="<?php echo htmlspecialchars($data['source']['google_sheets_url'], ENT_QUOTES); ?>">Open demo Sheet ↗</a> <button type="button" class="sourcebtn" onclick="location.reload()">Refresh data</button></div></div><div id="content"></div><div class="source-foot">Lung Center of the Philippines · Pathology and Laboratory Medicine Department · Immunology census.
 <?php if(currentMode()!=='live'): ?><strong>Local sample-data preview.</strong> Connect the authorized Google Sheets working copy for current values.<?php else: ?>Connected to a separate working-copy spreadsheet. Original workbook remains unchanged.<?php endif; ?> <span style="color:#126a64">PHP implementation · controlled access</span></div></main></div><div class="detail-backdrop" id="backdrop"></div><div class="drawer" id="drawer"></div>
 <script>
 const DATA=<?php echo $json; ?>;
@@ -287,35 +301,91 @@ async function savePHPBatch(){
   }
 }
 
-let reportPeriod='all',reportDetail=false;
+
+let reportPeriod='all',reportDetail=false,reportAmounts=false,reportSecondRole='Noted by';
+const reportRoles=['Noted by','Reviewed by','Approved by'];
+const reportSigners={
+  prepared:{name:'',position:'',date:''},
+  noted:{name:'',position:'',date:''}
+};
+function reportValidDate(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+  const date=new Date(value+'T12:00:00+08:00');
+  return !Number.isNaN(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
+function reportSignersReady(){
+  return ['prepared','noted'].every(role=>{
+    const value=reportSigners[role];
+    return value.name.trim()!==''&&value.position.trim()!==''&&reportValidDate(value.date);
+  });
+}
+function signerInputs(role){
+  const person=reportSigners[role];
+  return ['name','position','date'].map(field=>{
+    const type=field==='date'?'date':'text';
+    const label={name:'Full name',position:'Position / designation',date:'Date'}[field];
+    return `<label for="report-${role}-${field}">${label}
+       <input id="report-${role}-${field}" name="${role}_${field}" data-report-signer="${role}"
+         data-report-field="${field}" type="${type}" value="${escapeHtml(person[field])}" maxlength="120" required>
+     </label>`;
+  }).join('');
+}
+function reportUpdateButton(){
+  const button=document.querySelector('[data-report-submit]');
+  const hasPending=stagedChanges.size>0||batchUnconfirmed||batchSaving;
+  if(button)button.disabled=hasPending||!reportSignersReady();
+  const hint=document.getElementById('reportHint');
+  if(hint)hint.textContent=reportSignersReady()
+    ?'Completed names, positions and dates will appear on the printed report.'
+    :'Complete both signatories before generating the report.';
+}
 function reports(){
-  const periodMeta=[{label:'Full coverage — Dec 1–31, 2023',id:'all'},
+  const periods=[{label:'December 1–31, 2023',id:'all'},
     ...INTERVALS.map((p,i)=>({label:p.label+', 2023',id:String(i)}))];
-  const chosen=reportPeriod==='all'?null:INTERVALS[Number(reportPeriod)]?.label;
-  const rows=RECORDS.filter(r=>chosen===null||r.period===chosen);
-  const count=rows.reduce((total,r)=>total+Number(r.count||0),0);
-  const amount=rows.reduce((total,r)=>total+Number(r.amount||0),0);
+  const selected=reportPeriod==='all'?null:INTERVALS[Number(reportPeriod)]?.label;
+  const rows=RECORDS.filter(r=>selected===null||r.period===selected);
+  const count=rows.reduce((sum,r)=>sum+Number(r.count||0),0);
+  const tests=new Set(rows.map(r=>r.test)).size;
   const hasPending=stagedChanges.size>0||batchUnconfirmed||batchSaving;
   return `${pageIntro('Reporting / printable documentation','A4 formal census report',
-    'Create a formal, print-ready report for one reporting interval or the complete December 2023 coverage.')}
+    'Generate a departmental laboratory census for a selected reporting period.')}
     <div class="card report-form">
-      ${hasPending?'<div class="alertline" role="alert">Staged or uncertain edits must be saved and reconciled before creating a new report. Generated reports include only saved source values.</div>':''}
-      <p class="fine">Reports are generated from the current dataset with full examination-level totals, patient-group, priority and billing breakdowns. A detailed category appendix is optional.</p>
-      <form method="get" action="report.php">
-        <label for="reportPeriod">Reporting coverage</label>
+      ${hasPending?'<div class="alertline" role="alert">Staged or uncertain edits must be reconciled before a new report is generated.</div>':''}
+      <p class="fine">Select the reporting period, optional category appendix, and signatory information. Calculated amounts are excluded by default.</p>
+      <form method="post" action="report.php">
+        <label for="reportPeriod">Reporting period</label>
         <select name="period" class="select" id="reportPeriod">
-          ${periodMeta.map(p=>`<option value="${p.id}" ${reportPeriod===p.id?'selected':''}>${escapeHtml(p.label)}</option>`).join('')}
+          ${periods.map(p=>`<option value="${p.id}" ${reportPeriod===p.id?'selected':''}>${escapeHtml(p.label)}</option>`).join('')}
         </select>
         <label class="report-appendix"><input type="checkbox" name="detail" value="1" id="reportDetail" ${reportDetail?'checked':''}>
-          Include full category-detail appendix (more A4 pages)</label>
-        <div class="report-preview-grid">
-          <div><span>Records in coverage</span><b>${fmtInt(rows.length)}</b></div>
-          <div><span>Examinations</span><b>${fmtInt(count)}</b></div>
-          <div><span>Calculated amount</span><b>${fmtMoney(amount)}</b></div>
+          Include full category-detail appendix (additional A4 pages)</label>
+        <label class="report-appendix"><input type="checkbox" name="amounts" value="1" id="reportAmounts" ${reportAmounts?'checked':''}>
+          Include calculated amounts based on listed rates</label>
+        <div class="report-signatures-form">
+          <h3>Report signatories</h3>
+          <div class="report-signature-grid">
+            <fieldset><legend>Prepared by</legend>${signerInputs('prepared')}</fieldset>
+            <fieldset><legend>Second signatory</legend>
+              <label for="reportSecondRole">Report label
+                <select id="reportSecondRole" name="second_role">
+                  ${reportRoles.map(role=>`<option value="${role}" ${reportSecondRole===role?'selected':''}>${role}</option>`).join('')}
+                </select>
+              </label>
+              ${signerInputs('noted')}
+            </fieldset>
+          </div>
+          <p id="reportHint" class="report-hint">
+            ${reportSignersReady()?'Completed names, positions and dates will appear on the printed report.':'Complete both signatories before generating the report.'}
+          </p>
         </div>
-        <button type="submit" class="report-primary" ${hasPending?'disabled':''}>Generate A4 report</button>
+        <div class="report-preview-grid">
+          <div><span>Reporting intervals</span><b>${reportPeriod==='all'?'4':'1'}</b></div>
+          <div><span>Examinations</span><b>${fmtInt(count)}</b></div>
+          <div><span>Test categories</span><b>${fmtInt(tests)}</b></div>
+        </div>
+        <button type="submit" class="report-primary" data-report-submit ${hasPending||!reportSignersReady()?'disabled':''}>Generate A4 report</button>
       </form>
-      <p class="fine">The report opens as an authenticated, printable A4 page. Select Print / Save PDF to create a PDF on your device. Sign-off fields are intentionally blank until verified.</p>
+      <p class="fine">The report opens in this tab. Every page includes the original-color LCP letterhead, black Arial text and the required signatory information.</p>
     </div>`;
 }
 function render(){document.getElementById('content').innerHTML=batchBar()+({overview,periods,examinations,breakdown,records,reports,quality})[activePage]();}
@@ -329,7 +399,16 @@ if(e.target.closest('[data-clear-batch]')){
 }
 if(e.target.closest('[data-reconcile-batch]')){location.reload();return;}
 const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
-document.getElementById('content').addEventListener('input',e=>{if(e.target.id==='recordSearch'){
+document.getElementById('content').addEventListener('input',e=>{
+ const signer=e.target.closest('[data-report-signer]');
+ if(signer){
+  const role=signer.dataset.reportSigner,field=signer.dataset.reportField;
+  if(['prepared','noted'].includes(role)&&['name','position','date'].includes(field)){
+   reportSigners[role][field]=signer.value;reportUpdateButton();
+  }
+  return;
+ }
+ if(e.target.id==='recordSearch'){
  const value=e.target.value,pos=e.target.selectionStart;recordSearch=value;recordPage=0;render();
  const input=document.getElementById('recordSearch');if(input){input.focus();input.setSelectionRange(pos,pos);}return;}
 if(e.target.id==='examSearch'){tableQuery=e.target.value;const pos=e.target.selectionStart;document.getElementById('content').querySelector('tbody').innerHTML=filteredExams().map(a=>`<tr><td><button class="rowlink" data-exam="${escapeHtml(a.test)}">${escapeHtml(a.test)}</button></td><td class="right"><strong>${a.volume}</strong></td><td class="right">${a.patient_volume}</td><td class="right">${a.stat_volume}</td><td class="right">${a.routine_volume}</td><td class="right">${a.qfs_volume}</td><td class="right">${fmtMoney(a.reported_income)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching examinations.</td></tr>';}}
@@ -339,6 +418,15 @@ if(e.target.id==='recordPeriod'){recordPeriod=e.target.value;recordPage=0;render
 if(e.target.id==='recordGroup'){recordGroup=e.target.value;recordPage=0;render();return;}
 if(e.target.id==='reportPeriod'){reportPeriod=e.target.value;render();return;}
 if(e.target.id==='reportDetail'){reportDetail=e.target.checked;render();return;}
+ if(e.target.id==='reportAmounts'){reportAmounts=e.target.checked;render();return;}
+ if(e.target.id==='reportSecondRole'){if(reportRoles.includes(e.target.value))reportSecondRole=e.target.value;render();return;}
+ if(e.target.matches('[data-report-signer]')){
+  const role=e.target.dataset.reportSigner,field=e.target.dataset.reportField;
+  if(['prepared','noted'].includes(role)&&['name','position','date'].includes(field)){
+   reportSigners[role][field]=e.target.value;reportUpdateButton();
+  }
+  return;
+ }
 if(e.target.id==='sortExams'){tableSort=e.target.value;render()}
 });render();
 window.addEventListener('beforeunload',event=>{
