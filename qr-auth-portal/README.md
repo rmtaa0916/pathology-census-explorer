@@ -1,5 +1,27 @@
 # QR Logger — Google verified-sign-in prototype
 
+## Simplified owner deployment (single-file bundle)
+
+If the Apps Script editor is easier than a command-line deployment, use
+[DeploymentBundle/Code.gs](DeploymentBundle/Code.gs) and
+[DeploymentBundle/appsscript.json](DeploymentBundle/appsscript.json).
+These are copies of the two backend source files combined into one \`Code.gs\`;
+**do not install the combined file together with \`QrCore.gs\` and \`AuthEndpoint.gs\`**,
+or you will introduce duplicate declarations. The combined bundle was prepared
+for the pilot in November 2026. The owner still must configure four Script
+properties and approve the Google authorization once.
+
+- Create a **new standalone Apps Script project** under the owner's account; never
+  overwrite the existing working QR Logger deployment.
+- Replace the new project's default \`Code.gs\` with the bundled \`Code.gs\`.
+  Configure the bundled \`appsscript.json\` under Project Settings.
+- Enter Script properties listed in step C below.
+- Deploy the web app with **Execute as: Me** and **Who has access: Anyone**,
+  then paste its new \`/exec\` URL into the public \`qr-auth-portal/config.js\`.
+- **Do not enable Google Cloud Billing**, purchase anything, store client secrets
+  in the frontend, or enter real laboratory activity until live verification passes.
+
+
 **Status: experimental source code, NOT deployed or validated on an actual Android scanner. Use fictional inventory records only.** The existing \`feature/qr-logger-pilot\` app and its deployment have **not** been changed.
 
 The goal is to remove the per-user **"QR (Unverified)" Apps Script Google Sheets authorization screen**: users authenticate through **Sign in with Google** for basic identity only, while the owner-authorized Apps Script backend writes to a separate test workbook. **No request to access the staff member's Google Sheets or Gmail** is made by the frontend. Identity must be confirmed by Google's server, not by an email entered into the form.
