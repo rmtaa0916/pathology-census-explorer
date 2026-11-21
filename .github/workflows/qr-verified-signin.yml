@@ -1,0 +1,21 @@
+name: QR Verified Sign-In Prototype Checks
+on:
+  push:
+    branches: [feature/qr-verified-signin]
+    paths:
+      - 'qr-auth-portal/**'
+      - '.github/workflows/qr-verified-signin.yml'
+  pull_request:
+    paths:
+      - 'qr-auth-portal/**'
+      - '.github/workflows/qr-verified-signin.yml'
+jobs:
+  verified-identity-prototype:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check verified Google identity, authorization, and transactions
+        run: node qr-auth-portal/tests/auth.test.cjs
