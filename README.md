@@ -2,6 +2,12 @@
 
 A **PHP 8.2+** version of the responsive Pathology Census Explorer. It keeps the original interface's HTML/CSS/JS structure. The public repository package **contains no source laboratory census data, no credentials, and no copied source workbook**.
 
+## Google Apps Script application link
+
+**[Open Pathology Census Explorer](https://tinyurl.com/Pathology-Census-Explorer)**
+
+Short URL for the Google Apps Script deployment using the connected working-copy spreadsheet. Access is controlled by the Google Apps Script deployment settings. The PHP implementation documented below is separate from this web app.
+
 ## Status
 
 - Visual parity of original HTML vs PHP-rendered HTML: **10/10 pixel-identical screenshots** (five views × desktop/mobile) using an identical local fixture. This establishes *rendering parity*, not live integration.
