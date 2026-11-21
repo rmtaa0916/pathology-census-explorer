@@ -1,0 +1,15 @@
+.git
+.github
+.env
+.env.*
+**/*service-account*.json
+**/credentials*.json
+**/*.pem
+**/*.key
+**/__pycache__
+**/node_modules
+tests/
+docs/
+bin/
+README.md
+*.log
