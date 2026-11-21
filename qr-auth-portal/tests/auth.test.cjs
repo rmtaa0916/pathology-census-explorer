@@ -12,7 +12,7 @@ assert.match(html,/name="qr-transport"/);
 assert.match(html,/const INITIAL_REF=new URLSearchParams/);
 assert.match(html,/nonce:LOGIN_NONCE/);
 assert.match(html,/function onReply\(event\)/);
-assert.match(html,/window\.top\.postMessage|postMessage/);
+assert.match(api,/window\.top\.postMessage/);
 assert.match(html,/new QRCode/);
 assert.match(html,/Sign in to record activities/);
 assert.match(config,/clientId: ""/);
