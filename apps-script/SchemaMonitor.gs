@@ -218,3 +218,20 @@ function checkSourceChanges_(allowEmail,changeType) {
         message:'Source scan could not complete: '+String(error?.message||error)}]};
   }
 }
+
+/**
+ * Called inside the update lock. A column insertion, changed formula,
+ * renamed tab, or new period must not silently write to the wrong field.
+ * Installation of notifications is optional; the static schema checks are not.
+ */
+function assertSourceSafeToEdit_() {
+  const props=PropertiesService.getScriptProperties();
+  const baselineText=props.getProperty(SOURCE_MONITOR.baselineKey);
+  const baseline=baselineText?JSON.parse(baselineText):null;
+  const status=compareSourceSnapshot_(sourceSnapshot_(),baseline);
+  if (status.needsReview) {
+    throw new Error('Source layout or formulas changed. Editing paused pending review: '+
+      status.issues.map(x=>x.message).join(' '));
+  }
+  return true;
+}
