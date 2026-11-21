@@ -148,9 +148,13 @@ function getSourceStatus() {
   }
   const snapshot=sourceSnapshot_();
   const diff=compareSourceSnapshot_(snapshot,baseline);
+  const installed=ScriptApp.getProjectTriggers().map(t=>t.getHandlerFunction());
+  const monitoringEnabled=!!baseline &&
+    installed.includes('sourceSheetChanged') &&
+    installed.includes('sourceScheduledCheck');
   return {
     ...diff,
-    monitoringEnabled: !!baseline,
+    monitoringEnabled,
     checkedAt: new Date().toISOString(),
     lastMonitorCheck: props.getProperty(SOURCE_MONITOR.lastCheckKey)||null,
     sourceUrl:'https://docs.google.com/spreadsheets/d/'+CENSUS.spreadsheetId+'/edit'
