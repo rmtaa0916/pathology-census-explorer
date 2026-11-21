@@ -22,6 +22,7 @@ const sheet={
      throw Error('Unexpected range');
    },
    getFormula:()=>{assert.equal(col,10);return formulaBroken?'':`=H${row}*I${row}`;},
+   getFormulas:()=>{assert.equal(row,5);assert.equal(col,10);assert.equal(height,792);assert.equal(cols,1);return rows.slice(1).map((v,i)=>[formulaBroken&&i===2?'':`=H${i+5}*I${i+5}`]);},
    setValue:value=>{
      assert.equal(col,8);assert.equal(row,7);assert.equal(height,undefined);
      const r=rows[row-4];r[7]=value;r[9]=value*r[8];
@@ -50,6 +51,9 @@ test('22 exams; 198 groups; four weeks; synthetic totals',()=>{
  const d=context.getDataset();
  assert.equal(d.exams.length,22);assert.equal(d.entries.length,198);
  assert.equal(d.summary_stats.total_volume,expected);
+ assert.equal(d.quality.passed,true);
+ assert.equal(d.quality.checks.length,8);
+ assert.equal(d.quality.totalRecords,792);
  assert.equal(d.entries.find(e=>e.test==='CRP'&&e.channel==='PAY Stat').source_rows[0],7);
 });
 test('missing or different user identity is rejected',()=>{
@@ -162,4 +166,29 @@ test('record edit restores all original inputs and totals',()=>{
  assert.deepEqual(rows[3].slice(),sample);
  assert.equal(context.getDataset().summary_stats.total_volume,expected);
  assert.equal(lock,false);
+});
+
+test('quality check reports a missing formula without claiming pass',()=>{
+ formulaBroken=true;
+ const quality=context.getDataset().quality;
+ assert.equal(quality.passed,false);
+ assert.equal(quality.checks.find(c=>c.id==='formulas').discrepancies,1);
+ formulaBroken=false;
+});
+test('quality check flags an amount discrepancy without altering source rows',()=>{
+ const saved=rows[3][9];rows[3][9]=saved+10;
+ const quality=context.getDataset().quality;
+ assert.equal(quality.passed,false);
+ assert.equal(quality.checks.find(c=>c.id==='amounts').discrepancies,1);
+ rows[3][9]=saved;
+});
+test('quality check flags duplicate identities within an interval',()=>{
+ const prior=rows[4].slice();
+ rows[4][3]=rows[3][3]; rows[4][4]=rows[3][4];
+ rows[4][5]=rows[3][5];rows[4][6]=rows[3][6];
+ const report=context.getDataset().quality;
+ assert.equal(report.passed,false);
+ assert.equal(report.checks.find(c=>c.id==='uniqueness').discrepancies,1);
+ rows[4]=prior;
+ assert.equal(context.getDataset().quality.passed,true);
 });
