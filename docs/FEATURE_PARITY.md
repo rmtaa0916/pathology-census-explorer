@@ -15,7 +15,7 @@ The project has **two implementations** of the same census editing/reporting exp
 | Calculated amounts in census | Optional, off by default | Same |
 | Institutional letterhead | Original full-color artwork every page | Same |
 | PDF output | Browser Print → Save as PDF | Browser Print → Save as PDF |
-| Source-change monitoring | Not yet ported as a PHP cron/email subsystem | \`apps-script/SchemaMonitor.gs\` (change trigger + hourly scan) |
+| Source-change monitoring | `src/SourceMonitor.php` + `bin/check-source.php` (opt-in CLI polling and email; host cron required) | `apps-script/SchemaMonitor.gs` (on-change trigger + hourly scan) |
 | Local preview fixture | \`CensusData::mockRows()\` when \`APP_MODE\` is not \`live\` | Test fixture is in Node test suite; app itself reads the connected copy |
 
 ## Report parity and data contract
