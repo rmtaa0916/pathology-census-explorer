@@ -55,7 +55,7 @@ function qrReply_(message) {
   const cfg=qrAuthSettings_();
   const encoded=Utilities.base64Encode(JSON.stringify(message),Utilities.Charset.UTF_8);
   const html='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
-    '<script>window.top.postMessage(JSON.parse(atob("' + encoded + '")),'+
+    '<script>window.top.postMessage(JSON.parse(new TextDecoder("utf-8").decode(Uint8Array.from(atob("' + encoded + '"),c=>c.charCodeAt(0)))),'+
     JSON.stringify(cfg.origin) + ');</script>'+
     '</body></html>';
   return HtmlService.createHtmlOutput(html)
