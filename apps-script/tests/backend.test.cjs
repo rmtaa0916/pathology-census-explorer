@@ -62,9 +62,23 @@ test('22 exams; 198 groups; four weeks; working-copy totals',()=>{
  assert.equal(d.quality.totalRecords,792);
  assert.equal(d.entries.find(e=>e.test==='CRP'&&e.channel==='PAY Stat').source_rows[0],7);
 });
-test('missing or different user identity is rejected',()=>{
- for(const bad of ['','other@gmail.com']){email=bad;assert.throws(()=>context.getDataset(),/Access denied/);}
+test('anonymous and non-owner visitors can read the working-copy dashboard',()=>{
+ for(const visitor of ['','other@gmail.com']){
+   email=visitor;
+   const dataset=context.getDataset();
+   assert.equal(dataset.records.length,792);
+   assert.equal(dataset.quality.passed,true);
+   assert.ok(context.doGet(),'Anonymous visitor can load HTML page');
+ }
  email='rmtaa0916@gmail.com';
+});
+test('monitor administration remains owner-only',()=>{
+ for(const visitor of ['','other@gmail.com']){
+   email=visitor;
+   assert.throws(()=>context.requireOwner_(),/Access denied/);
+ }
+ email='rmtaa0916@gmail.com';
+ assert.doesNotThrow(()=>context.requireOwner_());
 });
 test('only configured working-copy tabs accepted; status is informational',()=>{
  unexpectedTab=true;assert.throws(()=>context.getDataset(),/Unexpected/);unexpectedTab=false;
@@ -159,12 +173,20 @@ test('missing amount formula blocks mutation',()=>{
  formulaBroken=false;
  assert.equal(rows[3][3],e.test);
 });
-test('unauthorized users cannot change any source fields',()=>{
- email='other@gmail.com';
- const e={test:'CRP DEMO EDIT',patientGroup:'Employee',billing:'QFS',
-   priority:'QFS',count:7,rate:123.45};
- assert.throws(()=>context.updateRecord({...editBase,expected:e,values:expectedRecord}),
-   /Access denied/);
+test('anonymous visitor can edit existing validated rows',()=>{
+ const originalRow=rows[3].slice();
+ const snapshot={
+   test:originalRow[3],patientGroup:originalRow[4],billing:originalRow[5],
+   priority:originalRow[6],count:originalRow[7],rate:originalRow[8]
+ };
+ const changed={...snapshot,count:snapshot.count+1};
+ email='';
+ assert.equal(context.updateRecord({sheetRow:7,period:periods[0],
+   expected:snapshot,values:changed}).success,true);
+ assert.equal(rows[3][7],snapshot.count+1);
+ assert.equal(context.updateRecord({sheetRow:7,period:periods[0],
+   expected:changed,values:snapshot}).success,true);
+ assert.deepEqual(rows[3],originalRow);
  email='rmtaa0916@gmail.com';
 });
 test('record edit restores all original inputs and totals',()=>{
@@ -334,9 +356,15 @@ test('write failure attempts rollback of earlier completed ranges',()=>{
  assert.deepEqual(rows[8],before12);
  assert.equal(flushCount,oldFlush+1);
 });
-test('unauthorized user cannot submit batch edits',()=>{
- const p=makeEdit(7,{count:4});email='other@gmail.com';
- assert.throws(()=>context.updateRecordsBatch({changes:[p]}),/Access denied/);
+test('anonymous visitor can stage and save a validated batch',()=>{
+ const originalRow=rows[3].slice();
+ email='';
+ const res=context.updateRecordsBatch({changes:[makeEdit(7,{count:originalRow[7]+2})]});
+ assert.equal(res.success,true);
+ assert.equal(res.updatedCount,1);
+ assert.equal(rows[3][7],originalRow[7]+2);
+ context.updateRecordsBatch({changes:[makeEdit(7,{count:originalRow[7]})]});
+ assert.deepEqual(rows[3],originalRow);
  email='rmtaa0916@gmail.com';
 });
 console.log('Batch editor regression checks passed');
