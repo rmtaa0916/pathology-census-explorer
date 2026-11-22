@@ -347,7 +347,7 @@ console.log('Clean A4 report without page banner or repeated letterhead; optiona
   assert.equal(await info,true);
   assert.ok(html.includes('id="appDialog" class="app-dialog-overlay" hidden'));
   assert.ok(html.includes('aria-modal="true"'));
-  assert.ok(!/\\b(?:confirm|alert|prompt)\\s*\\(/.test(match[1]),'Native JavaScript dialogs are not used');
+  assert.ok(!match[1].includes('confirm(')&&!match[1].includes('alert(')&&!match[1].includes('prompt('),'Native JavaScript dialogs are not used');
   console.log('Custom confirmation modal: cancel, save, Escape, info and record previews passed');
 
 })().catch(error=>{console.error(error);process.exitCode=1});
