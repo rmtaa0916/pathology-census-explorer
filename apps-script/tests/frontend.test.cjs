@@ -59,16 +59,21 @@ assert.ok(html.includes('data-open-reports>Generate report'),'Report shortcut is
 assert.ok(!html.includes('Working copy of census data'),'Development disclaimer has been removed');
 assert.ok(!html.includes('Connected · structure monitoring active'),'Developer source monitor copy has been removed');
 assert.ok(!html.includes('data-nav="quality"'),'Audit section is not in published navigation');
+assert.ok(html.includes('Census records</button>'),'Record navigation is titled for staff');
+assert.ok(!html.includes('Working copy of census data'));
+assert.ok(!html.includes('Google Sheets is connected.'));
+assert.ok(!html.includes('interval-pill">Working copy'));
+assert.ok(!html.includes('Source compatibility monitor'));
 assert.ok(html.includes('@media screen and (max-width:680px)'),'Responsive action layout exists');
 console.log('Frontend syntax and source-editor rendering checks passed');
 // A visible popup must always show actual content and only actionable source rows.
 const detail=vm.runInContext("examinationDrawerMarkup('CRP',0)",sandbox);
-assert.ok(detail.includes('CRP')&&detail.includes('Source records · Dec 1–7'));
+assert.ok(detail.includes('CRP')&&detail.includes('Records · Dec 1–7'));
 assert.ok(detail.includes('data-drawer-edit-row="5"')&&detail.includes('data-drawer-edit-row="7"'));
 assert.ok(detail.includes('id="drawerExamPeriod"'));
 assert.ok(!detail.includes('data-drawer-edit-row=""'));
 const noRows=vm.runInContext("examinationDrawerMarkup('CRP',1)",sandbox);
-assert.ok(noRows.includes('No source records for this interval.'),'Empty period shows an informative message');
+assert.ok(noRows.includes('No records for this interval.'),'Empty period shows an informative message');
 assert.ok(!noRows.includes('data-drawer-edit-row'),'Empty period never offers a dead Edit inputs action');
 const unknownExam=vm.runInContext("examinationDrawerMarkup('UNKNOWN',0)",sandbox);
 assert.ok(unknownExam.includes('Details unavailable'),'Missing examination has visible fallback UI');
