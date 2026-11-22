@@ -187,6 +187,34 @@ function auditCopyRows_(rows, formulas, data) {
   };
 }
 
+/**
+ * Public-facing status reader. A previous SchemaMonitor.gs release checked
+ * visitor identity even for read-only health status. Do not let that legacy
+ * owner-only monitor block a valid anonymous dataset read.
+ *
+ * The edit paths still call assertSourceSafeToEdit_() under the script lock;
+ * only this non-mutating status display has a compatibility fallback.
+ */
+function getDashboardSourceStatus() {
+  try {
+    return getSourceStatus();
+  } catch (error) {
+    const message = String(error && error.message || error);
+    if (message !== 'Access denied. This working copy is restricted to the owner.') {
+      throw error;
+    }
+    return {
+      monitoringEnabled: false,
+      needsReview: false,
+      issues: [],
+      legacyMonitorAccess: true,
+      message: 'Update SchemaMonitor.gs from the apps-script branch. ' +
+        'The legacy monitoring function still checks visitor identity.',
+      sourceUrl: 'https://docs.google.com/spreadsheets/d/' + CENSUS.spreadsheetId + '/edit'
+    };
+  }
+}
+
 function getDataset() {
   const sheet = getCopySheet_();
   const rows = readCopyRows_(sheet);
@@ -194,7 +222,7 @@ function getDataset() {
   const formulas = sheet.getRange(CENSUS.firstDataRow, 10,
     CENSUS.lastDataRow - CENSUS.firstDataRow + 1, 1).getFormulas();
   data.quality = auditCopyRows_(rows, formulas, data);
-  data.sourceStatus = getSourceStatus();
+  data.sourceStatus = getDashboardSourceStatus();
   return data;
 }
 
