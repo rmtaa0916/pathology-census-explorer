@@ -285,5 +285,69 @@ console.log('Clean A4 report without page banner or repeated letterhead; optiona
   assert.equal(crops.length,3,'Prepare full A4, header and footer crops');
   assert.equal(crops[1][3],794,'Header width uses full A4 pixel size');
   assert.equal(crops[2][2],952,'Footer crop begins at expected image position');
-  console.log('Printed full-color margin-box artwork prepared on every page, without background graphics');
+  console.log('Printed full-color margin-box artwork prepared on first page, without background graphics');
+
+  // The dashboard confirmations must remain controllable by touch and keyboard.
+  const originalDialogGet=sandbox.document.getElementById;
+  function testDialogNode(id){
+    const handlers=new Map();
+    const el={id,textContent:'',hidden:true,dataset:{},isConnected:true,children:[],
+      classList:{add(){},remove(){}},
+      addEventListener(type,fn){handlers.set(type,[...(handlers.get(type)||[]),fn])},
+      removeEventListener(type,fn){handlers.set(type,(handlers.get(type)||[]).filter(f=>f!==fn))},
+      fire(type,details={}){for(const fn of handlers.get(type)||[])fn({
+        type,target:details.target||el,key:details.key,shiftKey:details.shiftKey,
+        preventDefault(){this.prevented=true}
+      })},
+      focus(){sandbox.document.activeElement=el},
+      replaceChildren(){el.children=[]},
+      appendChild(child){el.children.push(child)},
+      querySelector(){return null}
+    };
+    return el;
+  }
+  const ids=['appDialog','appDialogCancel','appDialogConfirm','appDialogTitle',
+    'appDialogMessage','appDialogDetails'];
+  const nodes=new Map(ids.map(id=>[id,testDialogNode(id)]));
+  const overlay=nodes.get('appDialog');
+  const panel=testDialogNode('panel');
+  overlay.querySelector=selector=>{
+    if(selector==='.app-dialog')return panel;
+    return nodes.get(selector.slice(1));
+  };
+  sandbox.document.getElementById=id=>nodes.get(id)||originalDialogGet(id);
+  sandbox.document.createElement=tag=>{
+    assert.equal(tag,'li','Modal previews only append list items');
+    return testDialogNode('list-item');
+  };
+  sandbox.document.body={classList:{add(){},remove(){}}};
+  sandbox.document.activeElement=testDialogNode('trigger');
+  const first=vm.runInContext("confirmAppAction({title:'Save changes?',message:'Confirm record updates.',confirmLabel:'Save changes',details:['Row 5 · CRP']})",sandbox);
+  assert.equal(overlay.hidden,false);
+  assert.equal(nodes.get('appDialogTitle').textContent,'Save changes?');
+  assert.equal(nodes.get('appDialogDetails').children.length,1);
+  assert.equal(nodes.get('appDialogDetails').children[0].textContent,'Row 5 · CRP');
+  assert.equal(nodes.get('appDialogCancel').hidden,false);
+  nodes.get('appDialogCancel').fire('click');
+  assert.equal(await first,false,'Cancel does not authorize the write');
+  assert.equal(overlay.hidden,true,'Dialog closes after cancellation');
+
+  const second=vm.runInContext("confirmAppAction({title:'Save one record?',message:'Changes will be saved.',confirmLabel:'Save record'})",sandbox);
+  nodes.get('appDialogConfirm').fire('click');
+  assert.equal(await second,true,'Explicit confirm authorizes the write');
+
+  const third=vm.runInContext("confirmAppAction({title:'Discard?',message:'Unsaved edits will be lost.',tone:'danger'})",sandbox);
+  assert.equal(panel.dataset.tone,'danger');
+  overlay.fire('keydown',{key:'Escape'});
+  assert.equal(await third,false,'Escape safely cancels the destructive action');
+
+  const info=vm.runInContext("notifyAppUser('Editing unavailable','Please refresh the dashboard.')",sandbox);
+  assert.equal(nodes.get('appDialogCancel').hidden,true,'Information notices have one action');
+  nodes.get('appDialogConfirm').fire('click');
+  assert.equal(await info,true);
+  assert.ok(html.includes('id="appDialog" class="app-dialog-overlay" hidden'));
+  assert.ok(html.includes('aria-modal="true"'));
+  assert.ok(!/\\b(?:confirm|alert|prompt)\\s*\\(/.test(match[1]),'Native JavaScript dialogs are not used');
+  console.log('Custom confirmation modal: cancel, save, Escape, info and record previews passed');
+
 })().catch(error=>{console.error(error);process.exitCode=1});
