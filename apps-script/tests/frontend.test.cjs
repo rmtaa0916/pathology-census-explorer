@@ -43,7 +43,7 @@ vm.runInContext(script,sandbox);
 assert.ok(get('content').innerHTML.includes('Immunology census overview'));
 vm.runInContext("showPage('records')",sandbox);
 const editor=get('content').innerHTML;
-assert.ok(editor.includes('Source record editor'));
+assert.ok(editor.includes('Census record editor'));
 assert.ok(editor.includes('data-record-edit="5"'));
 assert.ok(editor.includes('data-record-edit="7"'));
 assert.ok(editor.includes('₱1,214'));
@@ -53,6 +53,13 @@ assert.ok(get('content').innerHTML.includes('No records match'));
 vm.runInContext("recordPeriod='all';recordQuery='7';render()",sandbox);
 assert.ok(get('content').innerHTML.includes('data-record-edit="7"'));
 assert.ok(!get('content').innerHTML.includes('data-record-edit="5"'));
+assert.ok(html.includes('role="group" aria-label="Dashboard actions"'),'Top actions are grouped');
+assert.ok(html.includes('data-open-records>Edit records'),'Edit shortcut is prominent');
+assert.ok(html.includes('data-open-reports>Generate report'),'Report shortcut is prominent');
+assert.ok(!html.includes('Working copy of census data'),'Development disclaimer has been removed');
+assert.ok(!html.includes('Connected · structure monitoring active'),'Developer source monitor copy has been removed');
+assert.ok(!html.includes('data-nav="quality"'),'Audit section is not in published navigation');
+assert.ok(html.includes('@media screen and (max-width:680px)'),'Responsive action layout exists');
 console.log('Frontend syntax and source-editor rendering checks passed');
 // A visible popup must always show actual content and only actionable source rows.
 const detail=vm.runInContext("examinationDrawerMarkup('CRP',0)",sandbox);
@@ -70,7 +77,7 @@ assert.ok(html.includes('aria-hidden="true"'),'Hidden drawer is not exposed to s
 console.log('Examination popup content, valid row actions and empty states passed');
 
 vm.runInContext("staleDashboard=true;showPage('records')",sandbox);
-assert.ok(get('content').innerHTML.includes('changes not yet reflected'));
+assert.ok(get('content').innerHTML.includes('Data may have changed'));
 vm.runInContext("staleDashboard=false;showPage('quality')",sandbox);
 assert.ok(get('content').innerHTML.includes('Not verified'));
 vm.runInContext("QUALITY={passed:false,findings:2,totalRecords:792,zeroCountRecords:12,checkedAt:'2026-11-21T00:00:00.000Z',checks:[{id:'formulas',title:'Source amount formulas',passed:false,discrepancies:2,explanation:'Two errors'},{id:'totals',title:'Dashboard-to-source reconciliation',passed:true,discrepancies:0,explanation:'Matched'}]};showPage('quality')",sandbox);
@@ -89,20 +96,20 @@ assert.equal(dirty.changed,true);
 console.log('Frontend quality, zero-total, sorting, dirty-state and stale-status checks passed');
 
 vm.runInContext("SOURCE={monitoringEnabled:false,needsReview:false,issues:[],checkedAt:'2026-11-21T00:00:00.000Z'};showPage('overview')",sandbox);
-assert.ok(get('content').innerHTML.includes('automatic alerts not configured'));
-assert.ok(get('sourceSideHealth').innerHTML.includes('Google Sheets'));
+assert.ok(!get('content').innerHTML.includes('automatic alerts not configured'));
+assert.ok(!html.includes('id="sourceSideHealth"'));
 vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:false,issues:[],checkedAt:'2026-11-21T00:00:00.000Z'};showPage('quality')",sandbox);
-assert.ok(get('content').innerHTML.includes('structure monitoring active'));
-assert.ok(get('content').innerHTML.includes('Source compatibility monitor'));
+assert.ok(!get('content').innerHTML.includes('structure monitoring active'));
+assert.ok(!get('content').innerHTML.includes('Source compatibility monitor'));
 vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:true,severity:'critical',issues:[{kind:'column_count',message:'New source column requires review'}],checkedAt:'2026-11-21T00:00:00.000Z'};showPage('records')",sandbox);
-assert.ok(get('content').innerHTML.includes('Source change detected'));
+assert.ok(get('content').innerHTML.includes('Data requires attention'));
 assert.ok(get('content').innerHTML.includes('New source column requires review'));
 assert.ok(get('content').innerHTML.includes('data-check-source'));
 console.log('Frontend monitored/unmonitored/review-required source-status checks passed');
 
 
 vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:false,issues:[]};staleDashboard=false;recordQuery='';recordGroup='all';recordPeriod='all';showPage('records');const r=RECORDS[0];stageSourceRecord(r,{...recordValues(r),count:r.count+3})",sandbox);
-assert.ok(get('content').innerHTML.includes('Source record editor'));
+assert.ok(get('content').innerHTML.includes('Census record editor'));
 vm.runInContext("render()",sandbox);
 assert.ok(get('content').innerHTML.includes('1 unsaved change staged'));
 assert.ok(get('content').innerHTML.includes('data-batch-save'));
