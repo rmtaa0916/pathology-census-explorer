@@ -154,7 +154,7 @@ const setup=get('content').innerHTML;
 assert.ok(setup.includes('A4 formal census reports'));
 assert.ok(setup.includes('Full coverage'));
 assert.ok(setup.includes('data-report-generate'));
-assert.ok(setup.includes('Include full category-detail appendix'));
+assert.ok(setup.includes('Include detailed appendix'));
 assert.ok(setup.includes('id="reportAmounts"'),'Financial figures are independently optional');
 assert.ok(!setup.includes('Source:</b> The connected Google Sheets working copy'),'Report setup avoids source implementation jargon');
 assert.equal(vm.runInContext('reportAmounts',sandbox),false,'Financial figures default to off');
