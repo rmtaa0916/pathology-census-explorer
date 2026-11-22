@@ -149,6 +149,27 @@ assert.equal(models.empty.total.count,0);
 assert.equal(models.one.rows,2);
 assert.equal(models.full.categories.length,2);
 assert.throws(()=>vm.runInContext("reportAggregate(RECORDS,'99')",sandbox),/Unknown reporting period/);
+
+assert.equal(vm.runInContext("reportPdfFilename(reportAggregate(RECORDS,'all'))",sandbox),
+  'LCP_Immunology_Census_2023-12-01_to_2023-12-31.pdf');
+assert.equal(vm.runInContext("reportPdfFilename(reportAggregate(RECORDS,'0'))",sandbox),
+  'LCP_Immunology_Census_2023-12-01_to_2023-12-07.pdf');
+assert.equal(vm.runInContext("reportPdfFilename(reportAggregate(RECORDS,'3'))",sandbox),
+  'LCP_Immunology_Census_2023-12-22_to_2023-12-31.pdf');
+assert.throws(()=>vm.runInContext("reportPdfFilename({start:'2023-12-31',end:'2023-12-01'})",sandbox),/valid reporting period/);
+sandbox.document.title='Pathology Census Explorer';
+assert.equal(vm.runInContext("setReportPdfTitle(reportAggregate(RECORDS,'0'))",sandbox),
+  'LCP_Immunology_Census_2023-12-01_to_2023-12-07.pdf');
+assert.equal(sandbox.document.title,'LCP_Immunology_Census_2023-12-01_to_2023-12-07');
+let printInvocations=0;
+sandbox.window.print=()=>{printInvocations++};
+vm.runInContext("printCurrentReport()",sandbox);
+assert.equal(printInvocations,1,'Print continues to use the native PDF dialog');
+vm.runInContext("restoreReportPageTitle()",sandbox);
+assert.equal(sandbox.document.title,'Pathology Census Explorer','Original tab title restored');
+assert.equal(vm.runInContext("activeReportPdfName",sandbox),'');
+console.log('Period-based PDF filename and print-title restoration checks passed');
+
 vm.runInContext("SOURCE={monitoringEnabled:true,needsReview:false,issues:[]};reportPeriod='all';stagedEdits.clear();staleDashboard=false;batchState='ready';showPage('reports')",sandbox);
 const setup=get('content').innerHTML;
 assert.ok(setup.includes('A4 formal census reports'));
@@ -182,6 +203,15 @@ assert.ok(printed.includes('IMMUNOLOGY LABORATORY CENSUS'));
 assert.ok(printed.includes('LUNG CENTER OF THE PHILIPPINES'));
 assert.ok(printed.includes('Pathology and Laboratory Medicine Department'));
 assert.ok(printed.includes('December 1–31, 2023'));
+assert.ok(printed.includes('id="reportFilename" readonly'),'Read-only suggested filename in PDF preview');
+assert.ok(printed.includes('LCP_Immunology_Census_2023-12-01_to_2023-12-31.pdf'),
+  'Preview filename reflects the full reporting month');
+assert.ok(printed.includes('data-report-copy-filename'),'Manual filename copying is available');
+assert.ok(html.includes("preview.querySelector('[data-report-print]').addEventListener('click',printCurrentReport)'),
+  'Print action restores the report period title');
+assert.ok(html.includes("preview.querySelector('[data-report-copy-filename]').addEventListener('click',copyReportPdfFilename)"),
+  'Copy action is connected');
+
 assert.ok(printed.includes('Appendix A.'));
 assert.ok(!printed.includes('₱4,648.00'),'DOH-style census is count-only by default');
 assert.ok(printed.includes('Prepared by:'));
