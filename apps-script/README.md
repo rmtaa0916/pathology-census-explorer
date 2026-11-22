@@ -1,6 +1,6 @@
 # Pathology Census Explorer — Apps Script working copy
 
-**Live app shortcut:** [Pathology Census Explorer](https://tinyurl.com/Pathology-Census-Explorer) (subject to existing Google access permissions).
+**Existing app shortcut:** [Pathology Census Explorer](https://tinyurl.com/Pathology-Census-Explorer). The shortcut will allow anonymous viewing/editing only after the owner publishes a new version with public access enabled.
 
 The `apps-script` branch implements the Google Apps Script web application. The original PHP version remains on `main`.
 
@@ -18,7 +18,7 @@ The app has **one data model**, regardless of whether it is used for exploration
 
 The word “DEMO” remains in the existing physical Google Sheet tab titles to avoid changing any linked formulas or references. The interface calls the dataset the **working copy**.
 
-Data from a copy can be used to demonstrate the full functionality. If the copy ever contains real clinical or other confidential records, do not make the deployment public or share its link with unauthorized users; copying does not anonymize data.
+**Public-edit demo warning:** All visitors, even without Google sign-in, can view these rows and edit existing supported census values when the deployed app is public. The Google Sheet itself does not need anonymous sharing because the app runs under the deploying owner's credentials. This is appropriate **only** for confirmed non-sensitive synthetic records. If the copy ever contains real clinical or other confidential records, revert the deployment to owner-only access immediately; copying a spreadsheet does not anonymize its contents.
 
 ## Capabilities
 
@@ -38,7 +38,7 @@ Only columns **D:I** can be edited from the application:
 | J | Calculated amount | Read-only formula `=H(row)*I(row)` |
 | K | Original source metadata/status | Preserved, read-only, no demo-only gating |
 
-The backend pins the spreadsheet ID and exact named tabs, checks source row identity and previous values, verifies the existing formula, uses a script lock, and rejects duplicate category identities when category fields change.
+The backend pins the spreadsheet ID and exact named tabs, checks source row identity and previous values, verifies the existing formula, uses a script lock, and rejects duplicate category identities when category fields change. **These are data-integrity checks, not user-login restrictions.**
 
 Saving confirms the write before refreshing the dashboard. Uncertain responses are resolved by rereading Sheets before another edit. The UI supports unsaved-change warnings, single-record Undo with stale-value protection, and quality checks of formulas, categories, duplicate keys, amounts, numeric inputs, reporting ranges and totals.
 
@@ -77,12 +77,12 @@ See [Source monitor setup and change-handling guide](docs/SOURCE_MONITOR.md) for
 
 ## Deployment
 
-1. Open the existing Pathology Census Explorer Apps Script project as its authorized owner.
-2. Paste the current `Code.gs`, `Index.html`, and `SchemaMonitor.gs` from this branch. Update `appsscript.json` to include trigger-management and email permissions.
-3. Save. To preserve the existing public-facing alias, choose **Deploy → Manage deployments → Edit → New version → Deploy**. Do not create a new deployment unless you want a new `/exec` URL.
-4. Keep **Execute as: Me** and **Who has access: Only myself** during this pilot. The server additionally verifies the active user's email.
-5. If the source monitor is not already installed, run `installSourceMonitor` once and approve trigger/email permissions. Existing installed triggers do not need to be re-created.
-6. Verify a staged multi-record save and undo/reconciliation using non-sensitive rows, then generate both selected-period and full-coverage A4 reports.
+1. In the Google Apps Script project, replace **`Code.gs`**, **`Index.html`** (the HTML file named `Index`), and **`SchemaMonitor.gs`** with the files from this branch. Under Project Settings, show the `appsscript.json` manifest and copy that as well.
+2. **This deployment intentionally permits anonymous viewing AND editing of the synthetic working-copy spreadsheet.** Do not use it for genuine clinical or confidential records. Keep the original workbook private. Anyone who knows the web-app link may submit validated edits to the working copy.
+3. Save. To preserve the existing short link, select **Deploy → Manage deployments → Edit → New version → Deploy**. Choose **Execute as: Me** and **Who has access: Anyone** (including anonymous visitors). The manifest's `webapp.access` is `ANYONE_ANONYMOUS` and `executeAs` is `USER_DEPLOYING`; a changed GitHub file does not change an already-published deployment.
+4. The application no longer checks the visitor's email to load data, update a count, save an existing record, or save multiple records. Source-schema checks, stale-value protection and the D:I-only write boundary remain in force. Only owner-authorized executions may install monitoring triggers or approve a new schema baseline.
+5. If the source monitor is not yet installed, run `installSourceMonitor` **from the Apps Script editor as the owner** and approve the trigger/email permissions. Existing triggers do not need to be re-created.
+6. Test in a private/incognito browser session (signed out), use **Source records** to edit an expendable synthetic row and save; verify the working-copy Sheet changed and that restoring the value works. Test report generation as well. Never test on real institutional records.
 
 GitHub commits do **not** automatically update the live Apps Script deployment. The existing TinyURL forwards to the current `/exec` URL; updating that deployment keeps the alias.
 
