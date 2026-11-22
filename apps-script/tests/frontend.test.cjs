@@ -48,6 +48,11 @@ assert.ok(editor.includes('data-record-edit="5"'));
 assert.ok(editor.includes('data-record-edit="7"'));
 assert.ok(editor.includes('₱1,214'));
 assert.ok(editor.includes('Calculated amount'));
+assert.ok(editor.includes('<th>Reporting period</th>'),'Use reporting period without spreadsheet coordinates');
+assert.ok(!editor.includes('Period / Sheet row'),'The source sheet layout is hidden');
+assert.ok(!editor.includes('Row 5')&&!editor.includes('Row 7'),'Row numbers are not rendered in cells');
+assert.ok(editor.includes('data-record-edit="5"')&&editor.includes('data-record-edit="7"'),
+  'Internal row identifiers still support precise editing');
 vm.runInContext("recordQuery='CRP';recordPeriod='Dec 8–14';render()",sandbox);
 assert.ok(get('content').innerHTML.includes('No records match'));
 vm.runInContext("recordPeriod='all';recordQuery='7';render()",sandbox);
@@ -64,6 +69,9 @@ assert.ok(!html.includes('Working copy of census data'));
 assert.ok(!html.includes('Google Sheets is connected.'));
 assert.ok(!html.includes('interval-pill">Working copy'));
 assert.ok(!html.includes('Source compatibility monitor'));
+assert.ok(!html.includes('Source row ${record.sheetRow}'),'Record editor does not show sheet locations');
+assert.ok(!html.includes('Source row ${c.sheetRow}'),'Batch review does not show sheet locations');
+assert.ok(!html.includes("'Row '+item.sheetRow"),'Confirmation dialogs do not show sheet locations');
 assert.ok(html.includes('@media screen and (max-width:680px)'),'Responsive action layout exists');
 console.log('Frontend syntax and source-editor rendering checks passed');
 // A visible popup must always show actual content and only actionable source rows.
@@ -352,11 +360,11 @@ console.log('Clean A4 report without page banner or repeated letterhead; optiona
   };
   sandbox.document.body={classList:{add(){},remove(){}}};
   sandbox.document.activeElement=testDialogNode('trigger');
-  const first=vm.runInContext("confirmAppAction({title:'Save changes?',message:'Confirm record updates.',confirmLabel:'Save changes',details:['Row 5 · CRP']})",sandbox);
+  const first=vm.runInContext("confirmAppAction({title:'Save changes?',message:'Confirm record updates.',confirmLabel:'Save changes',details:['CRP · Dec 1–7 · Inpatient · CHA']})",sandbox);
   assert.equal(overlay.hidden,false);
   assert.equal(nodes.get('appDialogTitle').textContent,'Save changes?');
   assert.equal(nodes.get('appDialogDetails').children.length,1);
-  assert.equal(nodes.get('appDialogDetails').children[0].textContent,'Row 5 · CRP');
+  assert.equal(nodes.get('appDialogDetails').children[0].textContent,'CRP · Dec 1–7 · Inpatient · CHA');
   assert.equal(nodes.get('appDialogCancel').hidden,false);
   nodes.get('appDialogCancel').fire('click');
   assert.equal(await first,false,'Cancel does not authorize the write');
