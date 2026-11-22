@@ -1230,7 +1230,7 @@ function reportPdfFilename(model){
   const isDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value);
   if(!model||!isDate(model.start)||!isDate(model.end)||model.start>model.end)
     throw Error('A valid reporting period is required for the PDF filename.');
-  return 'LCP_Immunology_Census_'+model.start+'_to_'+model.end+'.pdf';
+  return 'LCP Immunology Census - '+model.start+' to '+model.end+'.pdf';
 }
 function setReportPdfTitle(model){
   const filename=reportPdfFilename(model);
