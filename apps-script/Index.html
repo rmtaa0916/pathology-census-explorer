@@ -868,9 +868,9 @@ async function saveStagedEdits(){
   const snapshot=[...stagedEdits.values()].map(c=>({...c,
     expected:{...c.expected},values:{...c.values}}));
   if(!(await confirmAppAction({
-    title:'Save '+snapshot.length+' record '+(snapshot.length===1?'change':'changes')+'?',
+    title:'Save '+snapshot.length+' changed '+(snapshot.length===1?'record':'records')+'?',
     message:'The selected edits will be saved to the census. The dashboard totals will update afterward.',
-    confirmLabel:'Save '+(snapshot.length===1?'change':'changes'),
+    confirmLabel:'Save changes',
     details:snapshot.map(item=>'Row '+item.sheetRow+' · '+item.values.test+' · '+item.period)
   })))return;
   batchState='saving';batchNotice='Saving changes…';render();
@@ -890,7 +890,7 @@ async function saveStagedEdits(){
   batchState='refreshing';batchNotice='Updating totals…';render();
   try{
     applyFreshDataset(await requestFreshDataset());
-    batchState='ready';batchNotice=snapshot.length+' records saved.';
+    batchState='ready';batchNotice=snapshot.length+(snapshot.length===1?' record saved.':' records saved.');
     render();
   }catch(error){
     staleDashboard=true;batchState='blocked';
@@ -1052,7 +1052,7 @@ function openRecordEditor(sheetRow){
     try {
       const staged=stageSourceRecord(record,recordFormValues(form));
       closeDrawer(true);batchNotice=staged
-        ? stagedEdits.size+' records staged. You can continue editing before Save all.'
+        ? stagedEdits.size+(stagedEdits.size===1?' record':' records')+' staged. Continue editing or select Save all.'
         : 'No changes remain for this record.';
       render();
     } catch(error){drawer.querySelector('#recordEditStatus').textContent=String(error?.message||error);}
