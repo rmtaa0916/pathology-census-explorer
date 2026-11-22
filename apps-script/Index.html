@@ -157,13 +157,11 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
    position:relative;z-index:1;height:100%;width:100%;overflow:hidden;
    box-sizing:border-box
  }
+ #reportPreview .report-paper.report-screen-continuation{padding:18mm 16mm 20mm!important}
  #reportPreview .report-paper.report-screen-sheet .report-appendix{break-before:auto;page-break-before:auto}
  #reportPreview .report-paper.report-screen-sheet .report-appendix-table{table-layout:fixed}
  #reportPreview .report-paper.report-screen-sheet td,
  #reportPreview .report-paper.report-screen-sheet th{overflow-wrap:anywhere;word-break:normal}
- #reportPreview .report-page-counter{
-   text-align:center;font-size:11px;color:#657785;margin:0 0 4px
- }
 }
 @media print {
  #reportPreview .report-sheets{display:none!important}
@@ -279,8 +277,6 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
   font-size:10pt;font-weight:700
 }
 #reportPreview .report-paper .report-sign-line{border-color:#000}
-/* This counter describes the preview, so make it black as well. */
-#reportPreview .report-page-counter{color:#000;font-family:Arial,Helvetica,sans-serif}
 
 /* Formal reports use black text, while LCP stationery keeps its original colors. */
 #reportPreview .report-paper,#reportPreview .report-paper *:not(img){color:#000!important;text-shadow:none!important}
@@ -307,7 +303,8 @@ tr.is-staged{background:#eef7fd!important}tr.is-staged td{border-bottom-color:#d
 .report-sign-grid .report-signer-name{display:block;font-size:11px;font-weight:700;margin:9px 0 2px}
 .report-sign-grid .report-signer-position,.report-sign-grid .report-signer-date{font-size:10px;margin-top:3px}
 @media(max-width:650px){.report-signatory-people{grid-template-columns:1fr}}
-@page{size:A4 portrait;margin:47mm 16mm 46mm}
+@page{size:A4 portrait;margin:18mm 16mm 20mm}
+@page:first{margin:47mm 16mm 46mm}
 @media print{
  html,body{background:white!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
  body{overflow:visible!important}.shell,.detail-backdrop,.drawer{display:none!important}
@@ -1148,8 +1145,7 @@ function reportSignatureBlock(person,label){
 }
 
 
-/* Crop the original full-color LCP stationery into real per-page printer margin artwork.
-   These are foreground images, so they print even without the Background graphics option. */
+/* Print the LCP stationery in first-page margins only. */
 let reportLetterheadPrintPromise=null;
 function prepareReportLetterheadPrint(){
   if(reportLetterheadPrintPromise)return reportLetterheadPrintPromise;
@@ -1177,7 +1173,7 @@ function prepareReportLetterheadPrint(){
           style.id='reportPageStationeryStyle';
           document.head.appendChild(style);
         }
-        style.textContent=`@page{
+        style.textContent=`@page:first{
           size:A4 portrait;
           margin:47mm 16mm 46mm;
           @top-center{
@@ -1248,9 +1244,7 @@ function reportDocument(model,withAppendix=false,signatories=reportSignatories,s
    </article>`;
 }
 
-/* Render one A4 preview sheet per page instead of overlaying a one-page letterhead
-   on a document that is taller than A4. Source #reportPaper is unchanged and
-   remains the authoritative document for browser Print / Save PDF. */
+/* Render bounded A4 preview pages, with stationery on the first page only. */
 function paginateA4ScreenPreview(preview){
   const printPaper=preview.querySelector('#reportPaper');
   const original=printPaper?.querySelector('.report-content');
@@ -1267,15 +1261,15 @@ function paginateA4ScreenPreview(preview){
   function startPage(){
     if(++pageCount>maxPages)throw Error('Report exceeds the supported preview page count.');
     const sheet=document.createElement('article');
-    sheet.className='report-paper report-screen-sheet';
+    sheet.className='report-paper report-screen-sheet'+(pageCount===1?'':' report-screen-continuation');
     sheet.setAttribute('aria-label','A4 report page '+pageCount);
     const stationery=document.createElement('img');
     stationery.className='report-stationery';
     stationery.src=REPORT_LETTERHEAD_DATA_URL;
-    stationery.alt='LCP original-color letterhead, page '+pageCount;
+    stationery.alt='LCP letterhead';
     const body=document.createElement('div');
     body.className='report-content';
-    sheet.appendChild(stationery);
+    if(pageCount===1)sheet.appendChild(stationery);
     sheet.appendChild(body);
     sheets.appendChild(sheet);
     pageBody=body;
@@ -1352,10 +1346,6 @@ function paginateA4ScreenPreview(preview){
     if(hasTable)splitTable(child);
     else appendBlock(child.cloneNode(true));
   }
-  const count=document.createElement('p');
-  count.className='report-page-counter';
-  count.textContent=pageCount+' A4 page'+(pageCount===1?'':'s')+' · Original-color LCP letterhead repeats on every page';
-  sheets.parentNode.insertBefore(count,sheets);
   // Scale the visual preview to fit an Android phone/tablet viewport. The
   // printable source document remains full-size and is not affected.
   const viewportWidth=Math.max(320,preview.clientWidth-28);
@@ -1380,7 +1370,7 @@ function reports(){
       <div class="report-controls"><label>Reporting coverage
         <select class="select" id="reportPeriod">${options.map(o=>`<option value="${o.id}" ${reportPeriod===o.id?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select></label>
         <label class="report-checkbox"><input type="checkbox" id="reportDetail" ${reportDetail?'checked':''}>
-          Include full category-detail appendix (additional A4 pages)</label>
+          Include detailed appendix (may increase the number of pages)</label>
         <label class="report-checkbox"><input type="checkbox" id="reportAmounts" ${reportAmounts?'checked':''}>
           Include calculated amounts based on listed rates</label>
         <div class="report-signatory-editor">
