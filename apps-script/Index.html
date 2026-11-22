@@ -357,6 +357,7 @@ let batchState='ready',batchNotice='';
 
 function sourceHealthSummary(){
   if(!SOURCE)return 'Source monitoring status unavailable';
+  if(SOURCE.legacyMonitorAccess)return 'Source monitor requires updated code';
   if(SOURCE.needsReview)return 'Source change detected — review required';
   if(!SOURCE.monitoringEnabled)return 'Connected · automatic alerts not configured';
   return 'Connected · structure monitoring active';
@@ -366,6 +367,7 @@ function sourceHealthPanel(){
   const needs=SOURCE?.needsReview===true;
   const cls=needs?'source-health warning':SOURCE?.monitoringEnabled?'source-health':'source-health source-health-setup';
   const details=needs?'Changes may affect column positions, formulas or reporting intervals. Editing is paused until the structure is reviewed.':
+    SOURCE?.legacyMonitorAccess?'The connected sheet can be read. A legacy SchemaMonitor.gs still checks visitor identity; update that file and publish a new deployment version. Spreadsheet editing retains its normal source checks.':
     SOURCE?.monitoringEnabled?'Google Sheets is connected. The monitor compares columns, formulas and reporting periods and checks hourly.':
     'Google Sheets is connected. To enable emailed change alerts, run installSourceMonitor once in the Apps Script editor.';
   return `<section class="${cls}" role="${needs?'alert':'status'}">
@@ -384,6 +386,7 @@ function sourceHealthDetails(){
     <p class="fine">Last checked: ${escapeHtml(SOURCE?.checkedAt?new Date(SOURCE.checkedAt).toLocaleString('en-PH'):'Not checked')} ·
       Last automated check: ${escapeHtml(SOURCE?.lastMonitorCheck?new Date(SOURCE.lastMonitorCheck).toLocaleString('en-PH'):'Not yet run')}</p>
     ${issues.length?issues.map(i=>`<div class="flag"><b>${escapeHtml(i.kind.replaceAll('_',' '))}</b><span>${escapeHtml(i.message)}</span></div>`).join(''):
+      SOURCE?.legacyMonitorAccess?'<p class="record-note">Monitoring details are unavailable until the legacy SchemaMonitor.gs is replaced and the web app redeployed.</p>':
       '<p class="fine">No source layout discrepancies found in the current scan.</p>'}
     ${SOURCE?.monitoringEnabled?'':`<p class="record-note">Automatic email notifications have not been installed. Open the Apps Script editor, select <code>installSourceMonitor</code>, run it once, and approve the requested permissions. Refresh this page afterward.</p>`}
     <p class="fine">The system reports changes that may require a code revision. It does not modify the application automatically or approve structural changes.</p>
@@ -1426,7 +1429,7 @@ document.getElementById('content').addEventListener('click',e=>{
     }return;
   }
   const reconcile=e.target.closest('[data-batch-reconcile]');if(reconcile){reconcileStagedEdits();return;}
-  const health=e.target.closest('[data-check-source]');if(health){if(health.disabled)return;health.disabled=true;health.textContent='Checking…';google.script.run.withSuccessHandler(status=>{SOURCE=status;DATA.sourceStatus=status;render();}).withFailureHandler(err=>{health.disabled=false;health.textContent='Retry check';alert('Unable to check source: '+String(err?.message||err));}).getSourceStatus();return;}const undo=e.target.closest('[data-undo-last]');if(undo){undoLastEdit();return;}const editInterval=e.target.closest('[data-edit-interval]');if(editInterval){recordPeriod=INTERVALS[selectedInterval].label;recordGroup=periodSection==='operational'?'Employee':periodSection==='inpatient'?'Inpatient':periodSection==='outpatient'?'Outpatient':'all';recordPage=0;showPage('records');return;}const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const dir=e.target.closest('[data-sort-dir]');if(dir){tableSortDir=tableSortDir==='desc'?'asc':'desc';render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
+  const health=e.target.closest('[data-check-source]');if(health){if(health.disabled)return;health.disabled=true;health.textContent='Checking…';google.script.run.withSuccessHandler(status=>{SOURCE=status;DATA.sourceStatus=status;render();}).withFailureHandler(err=>{health.disabled=false;health.textContent='Retry check';alert('Unable to check source: '+String(err?.message||err));}).getDashboardSourceStatus();return;}const undo=e.target.closest('[data-undo-last]');if(undo){undoLastEdit();return;}const editInterval=e.target.closest('[data-edit-interval]');if(editInterval){recordPeriod=INTERVALS[selectedInterval].label;recordGroup=periodSection==='operational'?'Employee':periodSection==='inpatient'?'Inpatient':periodSection==='outpatient'?'Outpatient':'all';recordPage=0;showPage('records');return;}const recordEdit=e.target.closest('[data-record-edit]');if(recordEdit){openRecordEditor(Number(recordEdit.dataset.recordEdit));return;}const rp=e.target.closest('[data-record-page]');if(rp){recordPage=Math.max(0,recordPage+Number(rp.dataset.recordPage));render();return;}const pi=e.target.closest('[data-interval]');if(pi){selectedInterval=Number(pi.dataset.interval);render();return;}const ps=e.target.closest('[data-period-section]');if(ps){periodSection=ps.dataset.periodSection;render();return;}const metric=e.target.closest('[data-chart]');if(metric){chartMetric=metric.dataset.chart;render();return;}const dir=e.target.closest('[data-sort-dir]');if(dir){tableSortDir=tableSortDir==='desc'?'asc':'desc';render();return;}const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return;}const exam=e.target.closest('[data-exam]');if(exam){showExam(exam.dataset.exam);return;}});
 document.getElementById('content').addEventListener('input',e=>{
   const input=e.target.closest('[data-report-signatory]');
   if(input){
