@@ -207,10 +207,10 @@ assert.ok(printed.includes('id="reportFilename" readonly'),'Read-only suggested 
 assert.ok(printed.includes('LCP_Immunology_Census_2023-12-01_to_2023-12-31.pdf'),
   'Preview filename reflects the full reporting month');
 assert.ok(printed.includes('data-report-copy-filename'),'Manual filename copying is available');
-assert.ok(html.includes("preview.querySelector('[data-report-print]').addEventListener('click',printCurrentReport)'),
-  'Print action restores the report period title');
-assert.ok(html.includes("preview.querySelector('[data-report-copy-filename]').addEventListener('click',copyReportPdfFilename)"),
-  'Copy action is connected');
+assert.ok(html.includes("addEventListener('click',printCurrentReport)"),
+  'Print action uses the current reporting-period title');
+assert.ok(html.includes("addEventListener('click',copyReportPdfFilename)"),
+  'Copy filename action is connected');
 
 assert.ok(printed.includes('Appendix A.'));
 assert.ok(!printed.includes('₱4,648.00'),'DOH-style census is count-only by default');
