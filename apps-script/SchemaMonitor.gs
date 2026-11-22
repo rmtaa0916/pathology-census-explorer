@@ -139,7 +139,6 @@ function compareSourceSnapshot_(current, baseline) {
 
 /** Report current compatibility. No email is sent from this function. */
 function getSourceStatus() {
-  requireOwner_();
   const props = PropertiesService.getScriptProperties();
   const baselineJson = props.getProperty(SOURCE_MONITOR.baselineKey);
   let baseline=null;
