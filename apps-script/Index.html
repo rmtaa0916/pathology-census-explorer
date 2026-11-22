@@ -598,7 +598,7 @@ function examinationDrawerMarkup(name,index=selectedInterval){
        <td class="right">${fmtInt(r.count)}</td><td class="right">${fmtMoney(r.amount)}</td>
        ${WRITES_ENABLED?`<td><button type="button" class="sourcebtn" data-drawer-edit-row="${Number(r.sheetRow)}">Edit inputs</button></td>`:''}
        </tr>`).join('')}</tbody></table></div>`:
-       '<div class="drawer-empty" role="status"><strong>No records for this interval.</strong>Select another interval above. No edit action is available without a matching source row.</div>'}
+       '<div class="drawer-empty" role="status"><strong>No records for this interval.</strong>Select another interval above. No edit action is available without a matching record.</div>'}
    `;
 }
 function showExam(name,index=selectedInterval){
@@ -857,7 +857,7 @@ function reviewStagedEdits(){
     ${changes.map(c=>{
       const changed=sourceFields.filter(f=>c.expected[f]!==c.values[f]);
       return `<div class="batch-review-row">
-        <div><strong>${escapeHtml(c.values.test)}</strong><div class="fine">${escapeHtml(c.period)} · Source row ${c.sheetRow}</div></div>
+        <div><strong>${escapeHtml(c.values.test)}</strong><div class="fine">${escapeHtml(c.period)} · ${escapeHtml(c.values.patientGroup)} · ${escapeHtml(c.values.billing)}</div></div>
         <div class="batch-review-detail">${changed.map(f=>`<span><b>${escapeHtml(f)}</b>:
           ${escapeHtml(String(c.expected[f]))} → <strong>${escapeHtml(String(c.values[f]))}</strong></span>`).join('')}</div>
         <div class="batch-review-actions">
@@ -893,7 +893,7 @@ async function saveStagedEdits(){
     title:'Save '+snapshot.length+' changed '+(snapshot.length===1?'record':'records')+'?',
     message:'The selected edits will be saved to the census. The dashboard totals will update afterward.',
     confirmLabel:'Save changes',
-    details:snapshot.map(item=>'Row '+item.sheetRow+' · '+item.values.test+' · '+item.period)
+    details:snapshot.map(item=>item.values.test+' · '+item.period+' · '+item.values.patientGroup+' · '+item.values.billing)
   })))return;
   batchState='saving';batchNotice='Saving changes…';render();
   try {
@@ -955,7 +955,7 @@ function records(){
   const all=RECORDS.filter(r=>
     (recordPeriod==='all'||r.period===recordPeriod) &&
     (recordGroup==='all'||r.patientGroup===recordGroup) &&
-    (!query||[r.test,r.patientGroup,r.billing,r.priority,String(r.sheetRow)].some(v=>String(v).toLowerCase().includes(query)))
+    (!query||[r.test,r.patientGroup,r.billing,r.priority,r.period].some(v=>String(v).toLowerCase().includes(query)))
   );
   const pages=Math.max(1,Math.ceil(all.length/recordsPerPage));
   recordPage=Math.min(recordPage,pages-1);
@@ -974,7 +974,7 @@ function records(){
     <div class="card">
       <div class="controlbar">
         <input class="search" id="recordSearch" aria-label="Find source record"
-          placeholder="Search examination, billing or row" value="${escapeHtml(recordQuery)}">
+          placeholder="Search examination, billing or period" value="${escapeHtml(recordQuery)}">
         <select class="select" id="recordPeriod" aria-label="Filter reporting interval">
           ${recordOptions(['all',...INTERVALS.map(i=>i.label)],recordPeriod)}
         </select>
@@ -984,7 +984,7 @@ function records(){
         <span class="smalltag">${fmtInt(all.length)} matching records</span>
       </div>
       <div class="table-wrap"><table class="t"><thead><tr>
-        <th>Period / Sheet row</th><th>Examination</th><th>Patient group</th>
+        <th>Reporting period</th><th>Examination</th><th>Patient group</th>
         <th>Billing · Priority</th><th class="right">Count</th>
         <th class="right">Rate</th><th class="right">Calculated amount</th><th>Edit</th>
       </tr></thead><tbody>
@@ -992,7 +992,7 @@ function records(){
           const staged=stagedEdits.get(r.sheetRow);
           const v=staged?{...r,...staged.values,amount:staged.values.count*staged.values.rate}:r;
           return `<tr class="${staged?'is-staged':''}">
-            <td><strong>${escapeHtml(r.period)}</strong><div class="fine">Row ${r.sheetRow}</div></td>
+            <td><strong>${escapeHtml(r.period)}</strong></td>
             <td><strong>${escapeHtml(v.test)}</strong>${staged?'<span class="staged-marker">UNSAVED</span>':''}</td>
             <td>${escapeHtml(v.patientGroup)}</td>
             <td>${escapeHtml(v.billing)} · ${escapeHtml(v.priority)}</td>
@@ -1025,9 +1025,9 @@ function openRecordEditor(sheetRow){
   const exams=[...new Set(RECORDS.map(r=>r.test))].sort();
   const combos={Inpatient:['CHA','PAY'],Outpatient:['CHA','PAY'],Employee:['QFS']};
   drawer.innerHTML=`<button type="button" class="close" id="closeDrawer">Close ×</button>
-    <p class="eyebrow">Edit source values</p>
+    <p class="eyebrow">Edit examination record</p>
     <h2 style="font-size:24px;letter-spacing:-.7px;margin:0 0 9px">${escapeHtml(record.test)}</h2>
-    <p class="fine">Source row ${record.sheetRow} · ${escapeHtml(record.period)}, 2023 · ${escapeHtml(record.patientGroup)}</p>
+    <p class="fine">${escapeHtml(record.period)}, 2023 · ${escapeHtml(record.patientGroup)} · ${escapeHtml(record.billing)}</p>
     <form id="recordEditForm" class="record-editor">
       <label class="full">Examination name
         <input name="test" maxlength="80" required list="examChoices" value="${escapeHtml(shown.test)}" autocomplete="off">
@@ -1658,7 +1658,7 @@ document.getElementById('content').addEventListener('click',e=>{
   const discard=e.target.closest('[data-batch-discard]');if(discard){
     if(batchState==='ready'&&stagedEdits.size){
       const count=stagedEdits.size;
-      const details=[...stagedEdits.values()].map(item=>'Row '+item.sheetRow+' · '+item.values.test);
+      const details=[...stagedEdits.values()].map(item=>item.values.test+' · '+item.period+' · '+item.values.patientGroup+' · '+item.values.billing);
       confirmAppAction({
         title:'Discard '+count+' unsaved '+(count===1?'change':'changes')+'?',
         message:'These changes have not been saved. Discarding them will leave the census unchanged.',
