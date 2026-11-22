@@ -2,6 +2,23 @@
 
 A LCP-branded immunology census dashboard for the **Pathology and Laboratory Medicine Department, Lung Center of the Philippines**. Designed as a primary web interface for examining and editing the **connected Google Sheets working copy**, with period-specific reporting and protected batch editing.
 
+## Copy the Google Apps Script version (recommended)
+
+The **tested Apps Script files live on the [`apps-script` branch](https://github.com/rmtaa0916/pathology-census-explorer/tree/apps-script/apps-script)**. The default `main` branch contains the separate PHP implementation; do **not** paste `public/index.php` into Google Apps Script.
+
+| Google Apps Script file to create | Verified source to copy |
+| --- | --- |
+| **`Index`** (HTML file; Apps Script displays it as `Index.html`) | [**Index.html — dashboard UI**](https://github.com/rmtaa0916/pathology-census-explorer/blob/apps-script/apps-script/Index.html) |
+| **`Code.gs`** (Script file) | [**Code.gs — data and web-app backend**](https://github.com/rmtaa0916/pathology-census-explorer/blob/apps-script/apps-script/Code.gs) |
+| **`SchemaMonitor.gs`** (Script file) | [**SchemaMonitor.gs — structural checks**](https://github.com/rmtaa0916/pathology-census-explorer/blob/apps-script/apps-script/SchemaMonitor.gs) |
+| **`appsscript.json`** (Project Settings → Show manifest file) | [**appsscript.json — scopes and runtime**](https://github.com/rmtaa0916/pathology-census-explorer/blob/apps-script/apps-script/appsscript.json) |
+
+Open the file on GitHub and use **Raw** to copy its complete contents, not the GitHub webpage. Create the correct file **type** in Apps Script: never paste `Code.gs` or `SchemaMonitor.gs` inside `Index.html`. Do not copy the PHP files.
+
+This owner-only project is configured for the separate working-copy spreadsheet (Dec 2023), ID `1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE`. The backend permits `rmtaa0916@gmail.com` and fails closed when the Google Apps Script session cannot establish that account. Use that authorized account and deploy with **Execute as: Me / Who has access: Only myself**; do **not** weaken access checks merely to troubleshoot. Existing shortened links only update when the **existing Apps Script deployment** is edited to a **new version**; GitHub commits alone do not deploy.
+
+**Validation:** the last Apps Script CI run on 2026-11-21 for commit `43751b12` [passed](https://github.com/rmtaa0916/pathology-census-explorer/actions/runs/44867018329). This verifies automated tests, **not** that a particular live Google Apps Script deployment is currently accessible. See the [Apps Script setup and troubleshooting guide](https://github.com/rmtaa0916/pathology-census-explorer/blob/apps-script/apps-script/README.md).
+
 ## Application links
 
 **[Open deployed Google Apps Script application](https://tinyurl.com/Pathology-Census-Explorer)**
