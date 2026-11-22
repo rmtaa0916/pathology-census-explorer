@@ -72,6 +72,24 @@ test('anonymous and non-owner visitors can read the working-copy dashboard',()=>
  }
  email='rmtaa0916@gmail.com';
 });
+test('legacy read-only monitor does not deny anonymous dashboard access',()=>{
+ const normal=context.getSourceStatus;
+ email='';
+ context.getSourceStatus=()=>{throw Error('Access denied. This working copy is restricted to the owner.');};
+ try{
+   const d=context.getDataset();
+   assert.equal(d.records.length,792);
+   assert.equal(d.sourceStatus.legacyMonitorAccess,true);
+   assert.equal(d.sourceStatus.needsReview,false);
+   assert.ok(context.doGet());
+   assert.equal(context.getDashboardSourceStatus().legacyMonitorAccess,true);
+   context.getSourceStatus=()=>{throw Error('Source scan failed');};
+   assert.throws(()=>context.getDataset(),/Source scan failed/);
+ }finally{
+   context.getSourceStatus=normal;
+   email='rmtaa0916@gmail.com';
+ }
+});
 test('monitor administration remains owner-only',()=>{
  for(const visitor of ['','other@gmail.com']){
    email=visitor;
