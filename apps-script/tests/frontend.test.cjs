@@ -55,7 +55,7 @@ assert.ok(editor.includes('data-record-edit="5"')&&editor.includes('data-record-
   'Internal row identifiers still support precise editing');
 vm.runInContext("recordQuery='CRP';recordPeriod='Dec 8–14';render()",sandbox);
 assert.ok(get('content').innerHTML.includes('No records match'));
-vm.runInContext("recordPeriod='all';recordQuery='7';render()",sandbox);
+vm.runInContext("recordPeriod='all';recordQuery='PAY';render()",sandbox);
 assert.ok(get('content').innerHTML.includes('data-record-edit="7"'));
 assert.ok(!get('content').innerHTML.includes('data-record-edit="5"'));
 assert.ok(html.includes('role="group" aria-label="Dashboard actions"'),'Top actions are grouped');
