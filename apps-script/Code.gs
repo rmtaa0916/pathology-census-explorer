@@ -1,7 +1,9 @@
 /**
- * Pathology Census Explorer — Apps Script edition (working-copy dataset).
- * Deploy as "Execute as me" and "Only myself". Do not allow anonymous access.
- * This app reads/writes the separate configured Google Sheets copy, not the original workbook.
+ * Pathology Census Explorer — Apps Script edition (synthetic working-copy dataset).
+ * Public pilot: anonymous visitors may view and edit validated working-copy records.
+ * Deploy as "Execute as me" and "Anyone" (including visitors without sign-in).
+ * The deployed app reads/writes the separate working-copy Sheet, not the original workbook.
+ * Never use this anonymous-edit configuration for live patient or confidential data.
  */
 const CENSUS = Object.freeze({
   spreadsheetId: '1JD4v8qENATuFeXRyBHzwfaIbJs7uw_W86wfQ-vQwdwE',
@@ -14,6 +16,7 @@ const CENSUS = Object.freeze({
   periods: ['Dec 1–7', 'Dec 8–14', 'Dec 15–21', 'Dec 22–31']
 });
 
+/** Owner authorization is retained for administration, never data viewing or editing. */
 function requireOwner_() {
   const email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase();
   if (email !== CENSUS.allowedEmail) {
@@ -185,7 +188,6 @@ function auditCopyRows_(rows, formulas, data) {
 }
 
 function getDataset() {
-  requireOwner_();
   const sheet = getCopySheet_();
   const rows = readCopyRows_(sheet);
   const data = censusFromRows_(rows);
@@ -197,7 +199,6 @@ function getDataset() {
 }
 
 function doGet() {
-  requireOwner_();
   let data;
   try {
     data = getDataset();
@@ -226,7 +227,6 @@ function doGet() {
 
 /** Edit one count in the pinned working copy, with row identity and previous-count checks. */
 function updateCount(payload) {
-  requireOwner_();
   if (!payload || typeof payload !== 'object') throw new Error('Missing update payload.');
   const row = payload.sheetRow;
   const count = payload.count;
@@ -263,7 +263,6 @@ function updateCount(payload) {
  * K is a preserved source-status field. They are never written here.
  */
 function updateRecord(payload) {
-  requireOwner_();
   if (!payload || typeof payload !== 'object' ||
       !Number.isInteger(payload.sheetRow) ||
       payload.sheetRow < CENSUS.firstDataRow ||
@@ -349,7 +348,6 @@ function updateRecord(payload) {
  * Only D:I are written; A:C, J formulas and K metadata are untouched.
  */
 function updateRecordsBatch(payload) {
-  requireOwner_();
   const changes = payload && payload.changes;
   if (!Array.isArray(changes) || changes.length < 1 || changes.length > 100) {
     throw new Error('Select between 1 and 100 records to save.');
