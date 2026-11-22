@@ -151,16 +151,16 @@ assert.equal(models.full.categories.length,2);
 assert.throws(()=>vm.runInContext("reportAggregate(RECORDS,'99')",sandbox),/Unknown reporting period/);
 
 assert.equal(vm.runInContext("reportPdfFilename(reportAggregate(RECORDS,'all'))",sandbox),
-  'LCP_Immunology_Census_2023-12-01_to_2023-12-31.pdf');
+  'LCP Immunology Census - 2023-12-01 to 2023-12-31.pdf');
 assert.equal(vm.runInContext("reportPdfFilename(reportAggregate(RECORDS,'0'))",sandbox),
-  'LCP_Immunology_Census_2023-12-01_to_2023-12-07.pdf');
+  'LCP Immunology Census - 2023-12-01 to 2023-12-07.pdf');
 assert.equal(vm.runInContext("reportPdfFilename(reportAggregate(RECORDS,'3'))",sandbox),
-  'LCP_Immunology_Census_2023-12-22_to_2023-12-31.pdf');
+  'LCP Immunology Census - 2023-12-22 to 2023-12-31.pdf');
 assert.throws(()=>vm.runInContext("reportPdfFilename({start:'2023-12-31',end:'2023-12-01'})",sandbox),/valid reporting period/);
 sandbox.document.title='Pathology Census Explorer';
 assert.equal(vm.runInContext("setReportPdfTitle(reportAggregate(RECORDS,'0'))",sandbox),
-  'LCP_Immunology_Census_2023-12-01_to_2023-12-07.pdf');
-assert.equal(sandbox.document.title,'LCP_Immunology_Census_2023-12-01_to_2023-12-07');
+  'LCP Immunology Census - 2023-12-01 to 2023-12-07.pdf');
+assert.equal(sandbox.document.title,'LCP Immunology Census - 2023-12-01 to 2023-12-07');
 let printInvocations=0;
 sandbox.window.print=()=>{printInvocations++};
 vm.runInContext("printCurrentReport()",sandbox);
@@ -204,7 +204,7 @@ assert.ok(printed.includes('LUNG CENTER OF THE PHILIPPINES'));
 assert.ok(printed.includes('Pathology and Laboratory Medicine Department'));
 assert.ok(printed.includes('December 1–31, 2023'));
 assert.ok(printed.includes('id="reportFilename" readonly'),'Read-only suggested filename in PDF preview');
-assert.ok(printed.includes('LCP_Immunology_Census_2023-12-01_to_2023-12-31.pdf'),
+assert.ok(printed.includes('LCP Immunology Census - 2023-12-01 to 2023-12-31.pdf'),
   'Preview filename reflects the full reporting month');
 assert.ok(printed.includes('data-report-copy-filename'),'Manual filename copying is available');
 assert.ok(html.includes("addEventListener('click',printCurrentReport)"),
